@@ -1,8 +1,7 @@
 package com.example.taskmanagerapi.infra.security;
 
-import com.example.taskmanagerapi.repositories.UserRepository;
 import com.example.taskmanagerapi.domain.user.User;
-import com.example.taskmanagerapi.infra.security.TokenService;
+import com.example.taskmanagerapi.repositories.UserRepository;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;

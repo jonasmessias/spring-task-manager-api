@@ -44,10 +44,10 @@ public class AuthController {
             newUser.setEmail(body.email());
             newUser.setName(body.name());
             this.repository.save(newUser);
+
             String token = tokenService.generateToken(newUser);
             return ResponseEntity.ok(new ResponseDTO(newUser.getName(), token));
         }
-
         return ResponseEntity.badRequest().build();
     }
 }

@@ -14,10 +14,8 @@ import java.time.ZoneOffset;
 
 @Service
 public class TokenService {
-
     @Value("${api.security.token.secret}")
     public String secret;
-
      public String generateToken(User user){
          try {
              Algorithm algorithm = Algorithm.HMAC256(user.getPassword());
@@ -27,6 +25,7 @@ public class TokenService {
                      .withSubject(user.getEmail())
                      .withExpiresAt(this.generateExpirationDate())
                      .sign(algorithm);
+             return token;
          } catch (JWTCreationException exception) {
              throw new RuntimeException("Error while authenticating token");
          }
