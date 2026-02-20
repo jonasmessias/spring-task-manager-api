@@ -24,11 +24,18 @@ import com.example.taskmanagerapi.repositories.PasswordResetRepository;
 import com.example.taskmanagerapi.repositories.UserRepository;
 import com.example.taskmanagerapi.services.EmailService;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequestMapping("/auth")
 @RequiredArgsConstructor
+@Tag(name = "Authentication", description = "Endpoints for user authentication and password management")
 public class AuthController {
     private final UserRepository repository;
     private final PasswordEncoder passwordEncoder;
@@ -39,6 +46,12 @@ public class AuthController {
     @Value("${app.frontend.url}")
     private String frontendUrl;
 
+    @Operation(summary = "Login", description = "Authenticate user and return JWT token")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Successfully authenticated",
+                content = @Content(schema = @Schema(implementation = ResponseDTO.class))),
+        @ApiResponse(responseCode = "400", description = "Invalid credentials")
+    })
     @PostMapping("/login")
     public ResponseEntity<Object> login(@RequestBody LoginRequestDTO body){
         User user = this.repository.findByEmail(body.email()).orElseThrow(() -> new RuntimeException("User not found"));
@@ -49,6 +62,12 @@ public class AuthController {
         return ResponseEntity.badRequest().build();
     }
 
+    @Operation(summary = "Register", description = "Create a new user account and return JWT token")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Successfully registered",
+                content = @Content(schema = @Schema(implementation = ResponseDTO.class))),
+        @ApiResponse(responseCode = "400", description = "Email already registered or passwords don't match")
+    })
     @PostMapping("/register")
     public ResponseEntity<Object> register(@RequestBody RegisterRequestDTO body){
 
@@ -71,6 +90,11 @@ public class AuthController {
         return ResponseEntity.badRequest().body("Email already registered");
     }
 
+    @Operation(summary = "Forgot Password", description = "Send password reset email to user")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Reset email sent successfully"),
+        @ApiResponse(responseCode = "400", description = "Email not found")
+    })
     @PostMapping("/forgot-password")
     public ResponseEntity<Object> forgotPassword(@RequestBody ForgotPasswordRequestDTO body) {
 
@@ -100,6 +124,11 @@ public class AuthController {
         return ResponseEntity.ok("E-mail de redefinição enviado para: " + body.email());
     }
 
+    @Operation(summary = "Reset Password", description = "Reset user password using token from email")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Password reset successfully"),
+        @ApiResponse(responseCode = "400", description = "Invalid/expired token or passwords don't match")
+    })
     @PostMapping("/reset-password")
     public ResponseEntity<Object> resetPassword(@RequestBody ResetPasswordDTO body) {
 
