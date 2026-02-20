@@ -16,7 +16,8 @@ import com.example.taskmanagerapi.domain.user.User;
 @Service
 public class TokenService {
     @Value("${api.security.token.secret}")
-    public String secret;
+    private String secret;
+    
      public String generateToken(User user){
          try {
              Algorithm algorithm = Algorithm.HMAC256(secret);
@@ -32,7 +33,7 @@ public class TokenService {
          }
      }
 
-     public String validateToken(String token){
+     public String validadeToken(String token){
          try {
              Algorithm algorithm = Algorithm.HMAC256(secret);
              return JWT.require(algorithm)
@@ -49,3 +50,4 @@ public class TokenService {
          return LocalDateTime.now().plusHours(2).toInstant(ZoneOffset.of("-03:00"));
      }
 }
+
