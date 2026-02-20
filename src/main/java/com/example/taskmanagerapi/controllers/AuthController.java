@@ -4,6 +4,7 @@ import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.UUID;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -34,6 +35,9 @@ public class AuthController {
     private final TokenService tokenService;
     private final PasswordResetRepository passwordResetTokenRepository;
     private final EmailService emailService;
+    
+    @Value("${app.frontend.url}")
+    private String frontendUrl;
 
     @PostMapping("/login")
     public ResponseEntity<Object> login(@RequestBody LoginRequestDTO body){
@@ -85,7 +89,7 @@ public class AuthController {
         resetToken.setExpirationDate(LocalDateTime.now().plusMinutes(30));
         passwordResetTokenRepository.save(resetToken);
 
-        String resetLink = "http://localhost:4200/reset-password?token=" + token;
+        String resetLink = frontendUrl + "/reset-password?token=" + token;
         String message = "Olá, " + userOpt.get().getName() + "!\n\n" +
                 "Clique no link abaixo para redefinir sua senha:\n" +
                 resetLink + "\n\n" +
