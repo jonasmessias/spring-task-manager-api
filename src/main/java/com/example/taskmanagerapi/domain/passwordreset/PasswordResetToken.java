@@ -18,7 +18,6 @@ public class PasswordResetToken {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private String id;
-
     private String token;
     private String email;
     private LocalDateTime expirationDate;
