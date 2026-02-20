@@ -1,13 +1,9 @@
 package com.example.taskmanagerapi.controllers;
 
-import com.example.taskmanagerapi.domain.passwordreset.PasswordResetToken;
-import com.example.taskmanagerapi.domain.user.User;
-import com.example.taskmanagerapi.dto.*;
-import com.example.taskmanagerapi.infra.security.TokenService;
-import com.example.taskmanagerapi.repositories.PasswordResetRepository;
-import com.example.taskmanagerapi.repositories.UserRepository;
-import com.example.taskmanagerapi.services.EmailService;
-import lombok.RequiredArgsConstructor;
+import java.time.LocalDateTime;
+import java.util.Optional;
+import java.util.UUID;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -15,9 +11,19 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.time.LocalDateTime;
-import java.util.Optional;
-import java.util.UUID;
+import com.example.taskmanagerapi.domain.passwordreset.PasswordResetToken;
+import com.example.taskmanagerapi.domain.user.User;
+import com.example.taskmanagerapi.dto.ForgotPasswordRequestDTO;
+import com.example.taskmanagerapi.dto.LoginRequestDTO;
+import com.example.taskmanagerapi.dto.RegisterRequestDTO;
+import com.example.taskmanagerapi.dto.ResetPasswordDTO;
+import com.example.taskmanagerapi.dto.ResponseDTO;
+import com.example.taskmanagerapi.infra.security.TokenService;
+import com.example.taskmanagerapi.repositories.PasswordResetRepository;
+import com.example.taskmanagerapi.repositories.UserRepository;
+import com.example.taskmanagerapi.services.EmailService;
+
+import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequestMapping("/auth")
