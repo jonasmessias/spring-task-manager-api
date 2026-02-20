@@ -16,7 +16,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDateTime;
-import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -31,7 +30,7 @@ public class AuthController {
     private final EmailService emailService;
 
     @PostMapping("/login")
-    public ResponseEntity login(@RequestBody LoginRequestDTO body){
+    public ResponseEntity<Object> login(@RequestBody LoginRequestDTO body){
         User user = this.repository.findByEmail(body.email()).orElseThrow(() -> new RuntimeException("User not found"));
         if(passwordEncoder.matches(body.password(), user.getPassword())){
             String token = tokenService.generateToken(user);
@@ -41,7 +40,7 @@ public class AuthController {
     }
 
     @PostMapping("/register")
-    public ResponseEntity register(@RequestBody RegisterRequestDTO body){
+    public ResponseEntity<Object> register(@RequestBody RegisterRequestDTO body){
 
         if(!body.password().equals(body.confirmPassword())){
             return ResponseEntity.badRequest().body("Passwords do not match");
@@ -63,7 +62,7 @@ public class AuthController {
     }
 
     @PostMapping("/forgot-password")
-    public ResponseEntity forgotPassword(@RequestBody ForgotPasswordRequestDTO body) {
+    public ResponseEntity<Object> forgotPassword(@RequestBody ForgotPasswordRequestDTO body) {
 
         Optional<User> userOpt = this.repository.findByEmail(body.email());
 
@@ -92,7 +91,7 @@ public class AuthController {
     }
 
     @PostMapping("/reset-password")
-    public ResponseEntity resetPassword(@RequestBody ResetPasswordDTO body) {
+    public ResponseEntity<Object> resetPassword(@RequestBody ResetPasswordDTO body) {
 
         if(!body.newPassword().equals(body.confirmNewPassword())) {
             return ResponseEntity.badRequest().body("Passwords do not match");
