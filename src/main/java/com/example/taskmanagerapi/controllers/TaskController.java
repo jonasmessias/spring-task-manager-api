@@ -6,6 +6,7 @@ import java.util.Optional;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.lang.NonNull;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -90,7 +91,7 @@ public class TaskController {
     })
     @GetMapping("/{id}")
     public ResponseEntity<Object> getTaskById(
-            @Parameter(description = "Task ID", required = true) @PathVariable String id,
+            @Parameter(description = "Task ID", required = true) @PathVariable @NonNull String id,
             @AuthenticationPrincipal User user) {
         
         Optional<Task> taskOpt = this.taskRepository.findById(id);
@@ -121,7 +122,7 @@ public class TaskController {
     })
     @PutMapping("/{id}")
     public ResponseEntity<Object> updateTask(
-            @Parameter(description = "Task ID", required = true) @PathVariable String id,
+            @Parameter(description = "Task ID", required = true) @PathVariable @NonNull String id,
             @RequestBody UpdateTaskDTO body,
             @AuthenticationPrincipal User user) {
         
@@ -166,7 +167,7 @@ public class TaskController {
     })
     @DeleteMapping("/{id}")
     public ResponseEntity<Object> deleteTask(
-            @Parameter(description = "Task ID", required = true) @PathVariable String id,
+            @Parameter(description = "Task ID", required = true) @PathVariable @NonNull String id,
             @AuthenticationPrincipal User user) {
         
         Optional<Task> taskOpt = this.taskRepository.findById(id);
