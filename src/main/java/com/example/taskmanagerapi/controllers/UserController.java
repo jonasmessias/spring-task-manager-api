@@ -9,7 +9,7 @@ import com.example.taskmanagerapi.domain.user.User;
 import com.example.taskmanagerapi.dto.UserProfileDTO;
 
 @RestController
-@RequestMapping("/user")
+@RequestMapping("/me")
 public class UserController {
     
     @GetMapping
