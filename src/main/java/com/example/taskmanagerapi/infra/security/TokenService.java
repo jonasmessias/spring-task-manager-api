@@ -47,7 +47,8 @@ public class TokenService {
      }
 
      private Instant generateExpirationDate() {
-         return LocalDateTime.now().plusHours(2).toInstant(ZoneOffset.of("-03:00"));
+         // Access token expires in 15 minutes (short-lived for security)
+         return LocalDateTime.now().plusMinutes(15).toInstant(ZoneOffset.of("-03:00"));
      }
 }
 
