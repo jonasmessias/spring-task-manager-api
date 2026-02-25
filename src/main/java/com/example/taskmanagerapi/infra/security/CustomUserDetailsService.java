@@ -1,6 +1,6 @@
 package com.example.taskmanagerapi.infra.security;
-import com.example.taskmanagerapi.repositories.UserRepository;
-import com.example.taskmanagerapi.domain.user.User;
+
+import java.util.ArrayList;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -8,7 +8,8 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Component;
 
-import java.util.ArrayList;
+import com.example.taskmanagerapi.modules.auth.domain.User;
+import com.example.taskmanagerapi.modules.auth.repositories.UserRepository;
 
 @Component
 public class CustomUserDetailsService implements UserDetailsService {
