@@ -10,8 +10,8 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
-import com.example.taskmanagerapi.domain.user.User;
-import com.example.taskmanagerapi.repositories.UserRepository;
+import com.example.taskmanagerapi.modules.auth.domain.User;
+import com.example.taskmanagerapi.modules.auth.repositories.UserRepository;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
