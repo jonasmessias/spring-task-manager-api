@@ -1,6 +1,12 @@
 package com.example.taskmanagerapi.modules.auth.domain;
 
+import java.io.Serializable;
 import java.time.LocalDateTime;
+
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.fasterxml.jackson.datatype.jsr310.deser.LocalDateTimeDeserializer;
+import com.fasterxml.jackson.datatype.jsr310.ser.LocalDateTimeSerializer;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -20,7 +26,9 @@ import lombok.Setter;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class RefreshToken {
+public class RefreshToken implements Serializable {
+    
+    private static final long serialVersionUID = 1L;
     
     @Id
     private String token;
@@ -30,9 +38,13 @@ public class RefreshToken {
     private User user;
     
     @Column(nullable = false)
+    @JsonSerialize(using = LocalDateTimeSerializer.class)
+    @JsonDeserialize(using = LocalDateTimeDeserializer.class)
     private LocalDateTime expirationDate;
     
     @Column(nullable = false)
+    @JsonSerialize(using = LocalDateTimeSerializer.class)
+    @JsonDeserialize(using = LocalDateTimeDeserializer.class)
     private LocalDateTime createdAt;
     
     private String ipAddress;
