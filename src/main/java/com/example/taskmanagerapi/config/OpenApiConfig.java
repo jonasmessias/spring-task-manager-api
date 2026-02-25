@@ -27,7 +27,7 @@ public class OpenApiConfig {
                         .contact(new Contact()
                                 .name("Task Manager Team")
                                 .email("support@taskmanager.com")
-                                .url("https://github.com/reazew/task-manager-api"))
+                                .url("https://github.com/jonasmessias/task-manager-api"))
                         .license(new License()
                                 .name("MIT License")
                                 .url("https://opensource.org/licenses/MIT")))
