@@ -10,6 +10,7 @@ import io.swagger.v3.oas.models.info.Info;
 import io.swagger.v3.oas.models.info.License;
 import io.swagger.v3.oas.models.security.SecurityRequirement;
 import io.swagger.v3.oas.models.security.SecurityScheme;
+import io.swagger.v3.oas.models.tags.Tag;
 
 @Configuration
 public class OpenApiConfig {
@@ -37,6 +38,10 @@ public class OpenApiConfig {
                                         .type(SecurityScheme.Type.HTTP)
                                         .scheme("bearer")
                                         .bearerFormat("JWT")
-                                        .description("Enter JWT token obtained from /auth/login or /auth/register")));
+                                        .description("Enter JWT token obtained from /auth/login or /auth/register")))
+                // Define a ordem das tags (grupos) no Swagger UI
+                .addTagsItem(new Tag().name("Authentication").description("Endpoints de autenticação e registro"))
+                .addTagsItem(new Tag().name("Users").description("Endpoints de gerenciamento de usuários"))
+                .addTagsItem(new Tag().name("Tasks").description("Endpoints de gerenciamento de tarefas"));
     }
 }
