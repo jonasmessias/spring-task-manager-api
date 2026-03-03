@@ -21,9 +21,9 @@ public class OpenApiConfig {
                 .info(new Info()
                         .title("Task Manager API")
                         .version("1.0.0")
-                        .description("API for managing tasks with user authentication. " +
-                                "This API allows users to create, read, update, and delete tasks, " +
-                                "with built-in authentication and authorization.")
+                        .description("API for managing boards with lists and cards. " +
+                                "Supports multiple board types (extensible architecture). " +
+                                "Users can create boards, organize them with lists, and manage cards within each list.")
                         .contact(new Contact()
                                 .name("Task Manager Team")
                                 .email("support@taskmanager.com")
@@ -42,6 +42,8 @@ public class OpenApiConfig {
                 // Define a ordem das tags (grupos) no Swagger UI
                 .addTagsItem(new Tag().name("Authentication").description("Endpoints de autenticação e registro"))
                 .addTagsItem(new Tag().name("Users").description("Endpoints de gerenciamento de usuários"))
-                .addTagsItem(new Tag().name("Tasks").description("Endpoints de gerenciamento de tarefas"));
+                .addTagsItem(new Tag().name("Boards").description("Endpoints de gerenciamento de boards"))
+                .addTagsItem(new Tag().name("Board Lists").description("Endpoints de gerenciamento de listas dentro de boards"))
+                .addTagsItem(new Tag().name("Cards").description("Endpoints de gerenciamento de cards/tarefas"));
     }
 }
