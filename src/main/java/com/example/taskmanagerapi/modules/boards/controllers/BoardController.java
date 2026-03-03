@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.example.taskmanagerapi.modules.auth.domain.User;
@@ -23,6 +24,8 @@ import com.example.taskmanagerapi.modules.boards.dto.BoardResponseDTO;
 import com.example.taskmanagerapi.modules.boards.dto.CreateBoardDTO;
 import com.example.taskmanagerapi.modules.boards.dto.UpdateBoardDTO;
 import com.example.taskmanagerapi.modules.boards.services.BoardService;
+import com.example.taskmanagerapi.modules.workspaces.domain.Workspace;
+import com.example.taskmanagerapi.modules.workspaces.services.WorkspaceService;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -37,21 +40,26 @@ import lombok.RequiredArgsConstructor;
 @RestController
 @RequestMapping("/boards")
 @RequiredArgsConstructor
-@Tag(name = "Boards", description = "Endpoints for managing boards and their content")
+@Tag(name = "Boards", description = "Endpoints for managing boards within workspaces")
 @SecurityRequirement(name = "Bearer Authentication")
 public class BoardController {
     
     private final BoardService boardService;
+    private final WorkspaceService workspaceService;
 
-    @Operation(summary = "Create Board", description = "Create a new board for the authenticated user")
+    @Operation(summary = "Create Board", description = "Create a new board within a workspace")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "201", description = "Board created successfully",
                 content = @Content(schema = @Schema(implementation = BoardResponseDTO.class))),
-        @ApiResponse(responseCode = "401", description = "Unauthorized - Invalid or missing token")
+        @ApiResponse(responseCode = "400", description = "Invalid request or workspace not found"),
+        @ApiResponse(responseCode = "401", description = "Unauthorized - Invalid or missing token"),
+        @ApiResponse(responseCode = "403", description = "Forbidden - Workspace belongs to another user")
     })
     @PostMapping
     public ResponseEntity<Object> createBoard(
             @RequestBody CreateBoardDTO body,
+            @Parameter(description = "Workspace ID", required = true) 
+            @RequestParam("workspaceId") String workspaceId,
             @AuthenticationPrincipal User user) {
         
         if (body == null) {
@@ -61,23 +69,56 @@ public class BoardController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("User not authenticated");
         }
         
-        BoardResponseDTO response = boardService.createBoard(body, user);
+        // Get workspace
+        Optional<Workspace> workspaceOpt = workspaceService.getWorkspaceById(workspaceId);
+        if (workspaceOpt.isEmpty()) {
+            return ResponseEntity.badRequest().body("Workspace not found");
+        }
+        
+        Workspace workspace = workspaceOpt.get();
+        
+        // Check if workspace belongs to user
+        if (!workspaceService.isWorkspaceOwner(workspace, user)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body("You don't have permission to create boards in this workspace");
+        }
+        
+        BoardResponseDTO response = boardService.createBoard(body, user, workspace);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
-    @Operation(summary = "Get All Boards", description = "Retrieve all boards for the authenticated user")
+    @Operation(summary = "Get All Boards", description = "Retrieve all boards for a workspace")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Boards retrieved successfully"),
-        @ApiResponse(responseCode = "401", description = "Unauthorized - Invalid or missing token")
+        @ApiResponse(responseCode = "400", description = "Workspace not found"),
+        @ApiResponse(responseCode = "401", description = "Unauthorized - Invalid or missing token"),
+        @ApiResponse(responseCode = "403", description = "Forbidden - Workspace belongs to another user")
     })
     @GetMapping
-    public ResponseEntity<Object> getAllBoards(@AuthenticationPrincipal User user) {
+    public ResponseEntity<Object> getAllBoards(
+            @Parameter(description = "Workspace ID", required = true) 
+            @RequestParam("workspaceId") String workspaceId,
+            @AuthenticationPrincipal User user) {
         
         if (user == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("User not authenticated");
         }
         
-        List<BoardResponseDTO> response = boardService.getBoardsByUser(user);
+        // Get workspace
+        Optional<Workspace> workspaceOpt = workspaceService.getWorkspaceById(workspaceId);
+        if (workspaceOpt.isEmpty()) {
+            return ResponseEntity.badRequest().body("Workspace not found");
+        }
+        
+        Workspace workspace = workspaceOpt.get();
+        
+        // Check if workspace belongs to user
+        if (!workspaceService.isWorkspaceOwner(workspace, user)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body("You don't have permission to view boards in this workspace");
+        }
+        
+        List<BoardResponseDTO> response = boardService.getBoardsByWorkspace(workspace);
         return ResponseEntity.ok(response);
     }
 
