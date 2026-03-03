@@ -6,6 +6,7 @@ import java.util.List;
 
 import com.example.taskmanagerapi.modules.auth.domain.User;
 import com.example.taskmanagerapi.modules.lists.domain.BoardList;
+import com.example.taskmanagerapi.modules.workspaces.domain.Workspace;
 
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
@@ -26,9 +27,10 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 /**
- * Board entity - Top-level container
+ * Board entity - Container within a workspace
  * Scalable design to support multiple board types (BOARD, KANBAN, CALENDAR, etc.)
  * Default type is BOARD
+ * Now belongs to a Workspace for better organization
  */
 @Entity
 @Table(name = "boards")
@@ -56,6 +58,10 @@ public class Board {
     @JoinColumn(name = "owner_id", nullable = false)
     private User owner;
     
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "workspace_id", nullable = false)
+    private Workspace workspace;
+    
     @OneToMany(mappedBy = "board", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<BoardList> lists = new ArrayList<>();
     
@@ -65,13 +71,12 @@ public class Board {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
     
-    // Helper method to add list
+    // Helper methods to maintain bidirectional relationship
     public void addList(BoardList list) {
         lists.add(list);
         list.setBoard(this);
     }
     
-    // Helper method to remove list
     public void removeList(BoardList list) {
         lists.remove(list);
         list.setBoard(null);
