@@ -1,7 +1,7 @@
 # Task Manager API - Documentation
 
 ## Overview
-RESTful API for task management with JWT authentication, email notifications, and Redis-based token caching.
+RESTful API for task and board management with JWT authentication, email notifications, and Redis-based token caching.
 
 **Tech Stack:** Spring Boot 3.5.11 | Java 17 | H2 Database | Redis 7 | JWT | Docker
 
@@ -10,27 +10,30 @@ RESTful API for task management with JWT authentication, email notifications, an
 ## Features
 
 ### Authentication System
-- **User Registration & Login** with JWT tokens
+- **User Registration & Login** with JWT tokens and username support
+- **Flexible Login:** Email OR Username
 - **Access Token:** 4-hour validity
 - **Refresh Token:** 7-day validity with Redis caching
 - **Password Reset:** Email-based token system
 - **User Profile Management**
 
-### Task Management
-- CRUD operations for tasks
-- Task status tracking (PENDING, IN_PROGRESS, COMPLETED)
-- Priority levels (LOW, MEDIUM, HIGH)
-- User-specific task filtering
-- Due date management
+### Board Management (NEW ✨)
+- **Modular Architecture:** Separate modules for Boards, Lists, and Cards
+- **Hierarchical Structure:** Board → Lists → Cards
+- **Board Types:** Extensible system (BOARD, future: KANBAN, CALENDAR)
+- **Complete CRUD:** Full operations on boards, lists, and cards
+- **Cascade Deletion:** Deleting a board removes all lists and cards
+- **Position Management:** Automatic positioning for lists and cards
 
 ### Performance Optimization
 - **Redis Cache Layer:** 99% cache hit rate for token validation
 - **Reduced DB Load:** From ~666 queries/min to ~7 queries/min (10k users scenario)
 - **Cache-Aside Pattern:** Automatic cache warming and invalidation
+- **Service Layer:** Clean separation of business logic
 
 ### API Documentation
 - **Swagger UI:** Interactive API documentation
-- **Ordered Endpoints:** Grouped by Authentication → Users → Tasks
+- **Ordered Endpoints:** Grouped by Authentication → Users → Boards → Lists → Cards
 - **OpenAPI 3.0 Specification**
 
 ---
@@ -58,17 +61,37 @@ src/main/java/com/example/taskmanagerapi/
     │   ├── dto/                   # Request/Response DTOs
     │   ├── repositories/          # JPA repositories
     │   └── services/              # Business logic
-    └── tasks/                     # Task management module
-        ├── controllers/           # TaskController
-        ├── domain/                # Task, TaskStatus
-        ├── dto/                   # Task DTOs
-        └── repositories/          # TaskRepository
+    ├── boards/                    # Board management module (NEW ✨)
+    │   ├── controllers/           # BoardController
+    │   ├── domain/                # Board, BoardType
+    │   ├── dto/                   # Board DTOs
+    │   ├── repositories/          # BoardRepository
+    │   └── services/              # BoardService
+    ├── lists/                     # List management module (NEW ✨)
+    │   ├── controllers/           # ListController
+    │   ├── domain/                # BoardList
+    │   ├── dto/                   # List DTOs
+    │   ├── repositories/          # BoardListRepository
+    │   └── services/              # BoardListService
+    └── cards/                     # Card management module (NEW ✨)
+        ├── controllers/           # CardController
+        ├── domain/                # Card, CardStatus
+        ├── dto/                   # Card DTOs
+        ├── repositories/          # CardRepository
+        └── services/              # CardService
 ```
+
+### Modular Architecture Principles
+- **Single Responsibility:** Each module handles one domain entity
+- **Low Coupling:** Modules communicate via Services (dependency injection)
+- **High Cohesion:** Related components grouped together
+- **Service Layer:** Business logic separated from HTTP handling
+- **Thin Controllers:** Controllers only handle HTTP requests/responses
 
 ### Database Schema
 
 #### User
-- `id` (UUID), `name`, `email`, `password` (BCrypt), `createdAt`, `updatedAt`
+- `id` (UUID), `name`, `email`, `username` (unique), `password` (BCrypt), `createdAt`, `updatedAt`
 
 #### RefreshToken
 - `id` (Long), `token` (UUID), `user` (FK), `expiresAt`, `createdAt`
@@ -78,8 +101,17 @@ src/main/java/com/example/taskmanagerapi/
 - `id` (Long), `token` (UUID), `user` (FK), `expiresAt`, `createdAt`
 - **Validity:** 1 hour
 
-#### Task
-- `id` (UUID), `user` (FK), `title`, `description`, `status`, `priority`, `dueDate`, `createdAt`, `updatedAt`
+#### Board
+- `id` (UUID), `name`, `type` (enum), `description`, `owner` (FK User), `createdAt`, `updatedAt`
+- **Relationship:** One-to-Many with BoardList
+
+#### BoardList
+- `id` (UUID), `name`, `position` (integer), `board` (FK), `createdAt`, `updatedAt`
+- **Relationship:** Many-to-One with Board, One-to-Many with Card
+
+#### Card
+- `id` (UUID), `name`, `description`, `status` (enum), `position` (integer), `list` (FK), `createdAt`, `updatedAt`
+- **Status:** ACTIVE, ARCHIVED, COMPLETED
 
 ---
 
@@ -87,8 +119,8 @@ src/main/java/com/example/taskmanagerapi/
 
 ### Authentication
 ```
-POST   /api/auth/register          # Register new user
-POST   /api/auth/login             # Login (returns access + refresh tokens)
+POST   /api/auth/register          # Register new user (requires username)
+POST   /api/auth/login             # Login with email OR username
 POST   /api/auth/refresh           # Get new access token using refresh token
 POST   /api/auth/logout            # Invalidate refresh token
 POST   /api/auth/forgot-password   # Request password reset email
@@ -97,20 +129,36 @@ POST   /api/auth/reset-password    # Reset password with token
 
 ### User Management
 ```
-GET    /api/users/profile          # Get current user profile
+GET    /api/users/profile          # Get current user profile (includes username)
 PUT    /api/users/profile          # Update user profile
 DELETE /api/users/profile          # Delete user account
 ```
 
-### Tasks
+### Boards (NEW ✨)
 ```
-GET    /api/tasks                  # List all tasks (user-specific)
-POST   /api/tasks                  # Create new task
-GET    /api/tasks/{id}             # Get task by ID
-PUT    /api/tasks/{id}             # Update task
-DELETE /api/tasks/{id}             # Delete task
-GET    /api/tasks/status/{status}  # Filter tasks by status
-GET    /api/tasks/priority/{priority} # Filter tasks by priority
+POST   /boards                     # Create new board
+GET    /boards                     # List all user's boards
+GET    /boards/{id}                # Get board details (with lists and cards)
+PUT    /boards/{id}                # Update board
+DELETE /boards/{id}                # Delete board (cascades to lists and cards)
+```
+
+### Lists (NEW ✨)
+```
+POST   /boards/{boardId}/lists                    # Create list in board
+GET    /boards/{boardId}/lists                    # Get all lists from board
+GET    /boards/{boardId}/lists/{listId}           # Get list details
+PUT    /boards/{boardId}/lists/{listId}           # Update list
+DELETE /boards/{boardId}/lists/{listId}           # Delete list (cascades to cards)
+```
+
+### Cards (NEW ✨)
+```
+POST   /boards/{boardId}/lists/{listId}/cards              # Create card in list
+GET    /boards/{boardId}/lists/{listId}/cards              # Get all cards from list
+GET    /boards/{boardId}/lists/{listId}/cards/{cardId}     # Get card details
+PUT    /boards/{boardId}/lists/{listId}/cards/{cardId}     # Update card
+DELETE /boards/{boardId}/lists/{listId}/cards/{cardId}     # Delete card
 ```
 
 ---
@@ -208,6 +256,7 @@ Content-Type: application/json
 
 {
   "name": "John Doe",
+  "username": "johndoe",
   "email": "john@example.com",
   "password": "securePassword123"
 }
@@ -222,20 +271,20 @@ Content-Type: application/json
 }
 ```
 
-### 2. Login
+### 2. Login (Email OR Username)
 ```http
 POST /api/auth/login
 Content-Type: application/json
 
 {
-  "email": "john@example.com",
+  "emailOrUsername": "johndoe",
   "password": "securePassword123"
 }
 ```
 
 ### 3. Access Protected Endpoints
 ```http
-GET /api/tasks
+GET /boards
 Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 ```
 
@@ -364,22 +413,38 @@ Content-Type: application/json
 ```bash
 curl -X POST http://localhost:8080/api/auth/register \
   -H "Content-Type: application/json" \
-  -d '{"name":"Test User","email":"test@example.com","password":"test123"}'
+  -d '{"name":"Test User","username":"testuser","email":"test@example.com","password":"test123"}'
 ```
 
-**Login:**
+**Login (with username):**
 ```bash
 curl -X POST http://localhost:8080/api/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"email":"test@example.com","password":"test123"}'
+  -d '{"emailOrUsername":"testuser","password":"test123"}'
 ```
 
-**Create Task:**
+**Create Board:**
 ```bash
-curl -X POST http://localhost:8080/api/tasks \
+curl -X POST http://localhost:8080/boards \
   -H "Authorization: Bearer YOUR_TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"title":"My Task","description":"Task description","status":"PENDING","priority":"HIGH","dueDate":"2026-12-31T23:59:59"}'
+  -d '{"name":"My Project","type":"BOARD","description":"Main project board"}'
+```
+
+**Create List:**
+```bash
+curl -X POST http://localhost:8080/boards/{boardId}/lists \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"To Do"}'
+```
+
+**Create Card:**
+```bash
+curl -X POST http://localhost:8080/boards/{boardId}/lists/{listId}/cards \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Task 1","description":"Task description","status":"ACTIVE"}'
 ```
 
 ---
@@ -520,10 +585,85 @@ docker exec -it taskmanager-redis redis-cli ping
 
 ## Migration Notes
 
+### From Tasks to Boards (v2.0)
+- **Old:** Simple task management (DEPRECATED)
+- **New:** Hierarchical board system (Board → Lists → Cards)
+- **Migration:** No automatic migration - boards are a new feature
+- **Coexistence:** Old task endpoints removed in favor of board system
+
 ### From 15-minute to 4-hour Tokens
 - **Old:** Users refreshed every 15 minutes
 - **New:** Users refresh every ~3.5 hours
 - **Impact:** 16x reduction in refresh requests
+
+---
+
+## Changelog
+
+### v2.0.0 (March 2026) - Modular Board System
+**✨ New Features:**
+- Added username field to User entity (unique, required)
+- Implemented flexible login (email OR username)
+- Created modular board system (boards, lists, cards)
+- Implemented hierarchical structure: Board → Lists → Cards
+- Added BoardType enum (extensible for KANBAN, CALENDAR, etc.)
+- Added CardStatus enum (ACTIVE, ARCHIVED, COMPLETED)
+- Created Service Layer for business logic separation
+- Implemented cascade deletions (Board → Lists → Cards)
+- Auto-positioning for lists and cards
+
+**♻️ Refactoring:**
+- Separated modules: boards/, lists/, cards/
+- Applied Single Responsibility Principle (SRP)
+- Controllers now are thin (only HTTP handling)
+- Business logic moved to Service layer
+- Removed deprecated tasks/ module
+
+**🔧 Improvements:**
+- Added null safety validations in all controllers
+- Created spring-configuration-metadata.json for custom properties
+- Updated Swagger documentation with new endpoints
+- Added comprehensive API documentation
+
+**📝 Documentation:**
+- Updated DOCUMENTATION.md with board system
+- Created REFACTORING_SUMMARY.md
+- Created APPLICATION_PROPERTIES_GUIDE.md
+
+### v1.0.0 (February 2026) - Initial Release
+- JWT Authentication with refresh tokens
+- Redis caching for token validation
+- Email-based password reset
+- Task CRUD operations
+- H2 in-memory database
+- Docker Compose setup
+- Swagger UI documentation
+
+---
+
+## Additional Resources
+
+- **Refactoring Guide:** See [REFACTORING_SUMMARY.md](REFACTORING_SUMMARY.md)
+- **Board System Details:** See [BOARDS_DOCUMENTATION.md](BOARDS_DOCUMENTATION.md)
+- **Config Guide:** See [APPLICATION_PROPERTIES_GUIDE.md](APPLICATION_PROPERTIES_GUIDE.md)
+
+---
+
+## License
+
+This project is licensed under the MIT License.
+
+---
+
+## Support
+
+For issues, questions, or contributions:
+- Create an issue on GitHub
+- Contact: jonasmessias30@gmail.com
+
+---
+
+**Last Updated:** March 3, 2026
 
 ### Redis Cache Integration
 - **Backward Compatible:** Works with existing database
