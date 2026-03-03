@@ -1,6 +1,7 @@
 package com.example.taskmanagerapi.modules.boards.controllers;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
 import org.springframework.http.HttpStatus;
@@ -69,8 +70,10 @@ public class BoardController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("User not authenticated");
         }
         
-        // Get workspace
-        Optional<Workspace> workspaceOpt = workspaceService.getWorkspaceById(workspaceId);
+        // Validate and get workspace
+        Optional<Workspace> workspaceOpt = workspaceService.getWorkspaceById(
+            Objects.requireNonNull(workspaceId, "Workspace ID cannot be null")
+        );
         if (workspaceOpt.isEmpty()) {
             return ResponseEntity.badRequest().body("Workspace not found");
         }
@@ -78,12 +81,18 @@ public class BoardController {
         Workspace workspace = workspaceOpt.get();
         
         // Check if workspace belongs to user
-        if (!workspaceService.isWorkspaceOwner(workspace, user)) {
+        if (!workspaceService.isWorkspaceOwner(
+                Objects.requireNonNull(workspace, "Workspace cannot be null"), 
+                Objects.requireNonNull(user, "User cannot be null"))) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
                     .body("You don't have permission to create boards in this workspace");
         }
         
-        BoardResponseDTO response = boardService.createBoard(body, user, workspace);
+        BoardResponseDTO response = boardService.createBoard(
+            Objects.requireNonNull(body, "Request body cannot be null"), 
+            Objects.requireNonNull(user, "User cannot be null"), 
+            Objects.requireNonNull(workspace, "Workspace cannot be null")
+        );
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
@@ -104,8 +113,10 @@ public class BoardController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("User not authenticated");
         }
         
-        // Get workspace
-        Optional<Workspace> workspaceOpt = workspaceService.getWorkspaceById(workspaceId);
+        // Validate and get workspace
+        Optional<Workspace> workspaceOpt = workspaceService.getWorkspaceById(
+            Objects.requireNonNull(workspaceId, "Workspace ID cannot be null")
+        );
         if (workspaceOpt.isEmpty()) {
             return ResponseEntity.badRequest().body("Workspace not found");
         }
@@ -113,12 +124,16 @@ public class BoardController {
         Workspace workspace = workspaceOpt.get();
         
         // Check if workspace belongs to user
-        if (!workspaceService.isWorkspaceOwner(workspace, user)) {
+        if (!workspaceService.isWorkspaceOwner(
+                Objects.requireNonNull(workspace, "Workspace cannot be null"), 
+                Objects.requireNonNull(user, "User cannot be null"))) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
                     .body("You don't have permission to view boards in this workspace");
         }
         
-        List<BoardResponseDTO> response = boardService.getBoardsByWorkspace(workspace);
+        List<BoardResponseDTO> response = boardService.getBoardsByWorkspace(
+            Objects.requireNonNull(workspace, "Workspace cannot be null")
+        );
         return ResponseEntity.ok(response);
     }
 
