@@ -8,4 +8,5 @@ import com.example.taskmanagerapi.modules.auth.domain.User;
 
 public interface UserRepository extends JpaRepository<User, String> {
     Optional<User> findByEmail(String email);
+    Optional<User> findByUsername(String username);
 }
