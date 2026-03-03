@@ -46,6 +46,7 @@ public class UserController {
         UserProfileDTO profile = new UserProfileDTO(
             user.getId(),
             user.getName(),
+            user.getUsername(),
             user.getEmail() 
         );
         return ResponseEntity.ok(profile);
@@ -63,6 +64,7 @@ public class UserController {
                 .map(user -> new UserProfileDTO(
                     user.getId(),
                     user.getName(),
+                    user.getUsername(),
                     user.getEmail()
                 ))
                 .toList();
@@ -91,6 +93,7 @@ public class UserController {
         UserProfileDTO profile = new UserProfileDTO(
             user.getId(),
             user.getName(),
+            user.getUsername(),
             user.getEmail()
         );
         
