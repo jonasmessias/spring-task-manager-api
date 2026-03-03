@@ -2,6 +2,7 @@ package com.example.taskmanagerapi.modules.workspaces.services;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -88,10 +89,14 @@ public class WorkspaceService {
      */
     @Transactional
     public void deleteWorkspace(@NonNull String id) {
-        Workspace workspace = workspaceRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Workspace not found"));
+        Workspace workspace = workspaceRepository.findById(
+                Objects.requireNonNull(id, "Workspace ID cannot be null")
+            )
+            .orElseThrow(() -> new IllegalArgumentException("Workspace not found"));
         
-        workspaceRepository.delete(workspace);
+        workspaceRepository.delete(
+            Objects.requireNonNull(workspace, "Workspace cannot be null")
+        );
     }
 
     /**

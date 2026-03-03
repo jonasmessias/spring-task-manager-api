@@ -1,6 +1,7 @@
 package com.example.taskmanagerapi.modules.workspaces.controllers;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
 import org.springframework.http.HttpStatus;
@@ -60,7 +61,10 @@ public class WorkspaceController {
         }
         
         try {
-            WorkspaceResponseDTO response = workspaceService.createWorkspace(body, user);
+            WorkspaceResponseDTO response = workspaceService.createWorkspace(
+                Objects.requireNonNull(body, "Request body cannot be null"), 
+                Objects.requireNonNull(user, "User cannot be null")
+            );
             return ResponseEntity.status(HttpStatus.CREATED).body(response);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
@@ -96,7 +100,9 @@ public class WorkspaceController {
             @Parameter(description = "Workspace ID", required = true) @PathVariable String id,
             @AuthenticationPrincipal User user) {
         
-        Optional<Workspace> workspaceOpt = workspaceService.getWorkspaceById(id);
+        Optional<Workspace> workspaceOpt = workspaceService.getWorkspaceById(
+            Objects.requireNonNull(id, "Workspace ID cannot be null")
+        );
         
         if (workspaceOpt.isEmpty()) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
@@ -106,7 +112,9 @@ public class WorkspaceController {
         Workspace workspace = workspaceOpt.get();
         
         // Check if workspace belongs to the authenticated user
-        if (!workspaceService.isWorkspaceOwner(workspace, user)) {
+        if (!workspaceService.isWorkspaceOwner(
+                Objects.requireNonNull(workspace, "Workspace cannot be null"), 
+                Objects.requireNonNull(user, "User cannot be null"))) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
                     .body("You don't have permission to access this workspace");
         }
@@ -130,7 +138,9 @@ public class WorkspaceController {
             @Valid @RequestBody UpdateWorkspaceDTO body,
             @AuthenticationPrincipal User user) {
         
-        Optional<Workspace> workspaceOpt = workspaceService.getWorkspaceById(id);
+        Optional<Workspace> workspaceOpt = workspaceService.getWorkspaceById(
+            Objects.requireNonNull(id, "Workspace ID cannot be null")
+        );
         
         if (workspaceOpt.isEmpty()) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
@@ -140,13 +150,18 @@ public class WorkspaceController {
         Workspace workspace = workspaceOpt.get();
         
         // Check if workspace belongs to the authenticated user
-        if (!workspaceService.isWorkspaceOwner(workspace, user)) {
+        if (!workspaceService.isWorkspaceOwner(
+                Objects.requireNonNull(workspace, "Workspace cannot be null"), 
+                Objects.requireNonNull(user, "User cannot be null"))) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
                     .body("You don't have permission to update this workspace");
         }
         
         try {
-            WorkspaceResponseDTO response = workspaceService.updateWorkspace(workspace, body);
+            WorkspaceResponseDTO response = workspaceService.updateWorkspace(
+                Objects.requireNonNull(workspace, "Workspace cannot be null"), 
+                Objects.requireNonNull(body, "Request body cannot be null")
+            );
             return ResponseEntity.ok(response);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
@@ -165,7 +180,9 @@ public class WorkspaceController {
             @Parameter(description = "Workspace ID", required = true) @PathVariable String id,
             @AuthenticationPrincipal User user) {
         
-        Optional<Workspace> workspaceOpt = workspaceService.getWorkspaceById(id);
+        Optional<Workspace> workspaceOpt = workspaceService.getWorkspaceById(
+            Objects.requireNonNull(id, "Workspace ID cannot be null")
+        );
         
         if (workspaceOpt.isEmpty()) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
@@ -175,13 +192,17 @@ public class WorkspaceController {
         Workspace workspace = workspaceOpt.get();
         
         // Check if workspace belongs to the authenticated user
-        if (!workspaceService.isWorkspaceOwner(workspace, user)) {
+        if (!workspaceService.isWorkspaceOwner(
+                Objects.requireNonNull(workspace, "Workspace cannot be null"), 
+                Objects.requireNonNull(user, "User cannot be null"))) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
                     .body("You don't have permission to delete this workspace");
         }
         
         try {
-            workspaceService.deleteWorkspace(id);
+            workspaceService.deleteWorkspace(
+                Objects.requireNonNull(id, "Workspace ID cannot be null")
+            );
             return ResponseEntity.noContent().build();
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
