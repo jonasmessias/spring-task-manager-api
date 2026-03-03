@@ -1,0 +1,16 @@
+{
+  "properties": [
+    {
+      "name": "api.security.token.secret",
+      "type": "java.lang.String",
+      "description": "Secret key used for JWT token generation and validation. MUST be changed in production!",
+      "defaultValue": "my-secret-key-from-task-manager"
+    },
+    {
+      "name": "app.frontend.url",
+      "type": "java.lang.String",
+      "description": "Frontend application URL for CORS configuration. Allows cross-origin requests from this URL.",
+      "defaultValue": "http://localhost:4200"
+    }
+  ]
+}
