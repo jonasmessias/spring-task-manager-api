@@ -1,6 +1,7 @@
 # Task Manager API - Documentation
 
 ## Overview
+
 RESTful API for task and board management with JWT authentication, email notifications, and Redis-based token caching.
 
 **Tech Stack:** Spring Boot 3.5.11 | Java 17 | H2 Database | Redis 7 | JWT | Docker
@@ -10,6 +11,7 @@ RESTful API for task and board management with JWT authentication, email notific
 ## Features
 
 ### Authentication System
+
 - **User Registration & Login** with JWT tokens and username support
 - **Flexible Login:** Email OR Username
 - **Access Token:** 4-hour validity
@@ -18,6 +20,7 @@ RESTful API for task and board management with JWT authentication, email notific
 - **User Profile Management**
 
 ### Board Management (NEW ✨)
+
 - **Modular Architecture:** Separate modules for Boards, Lists, and Cards
 - **Hierarchical Structure:** Board → Lists → Cards
 - **Board Types:** Extensible system (BOARD, future: KANBAN, CALENDAR)
@@ -26,12 +29,14 @@ RESTful API for task and board management with JWT authentication, email notific
 - **Position Management:** Automatic positioning for lists and cards
 
 ### Performance Optimization
+
 - **Redis Cache Layer:** 99% cache hit rate for token validation
 - **Reduced DB Load:** From ~666 queries/min to ~7 queries/min (10k users scenario)
 - **Cache-Aside Pattern:** Automatic cache warming and invalidation
 - **Service Layer:** Clean separation of business logic
 
 ### API Documentation
+
 - **Swagger UI:** Interactive API documentation
 - **Ordered Endpoints:** Grouped by Authentication → Users → Boards → Lists → Cards
 - **OpenAPI 3.0 Specification**
@@ -41,6 +46,7 @@ RESTful API for task and board management with JWT authentication, email notific
 ## Architecture
 
 ### Project Structure
+
 ```
 src/main/java/com/example/taskmanagerapi/
 ├── TaskManagerApiApplication.java
@@ -82,6 +88,7 @@ src/main/java/com/example/taskmanagerapi/
 ```
 
 ### Modular Architecture Principles
+
 - **Single Responsibility:** Each module handles one domain entity
 - **Low Coupling:** Modules communicate via Services (dependency injection)
 - **High Cohesion:** Related components grouped together
@@ -91,25 +98,31 @@ src/main/java/com/example/taskmanagerapi/
 ### Database Schema
 
 #### User
+
 - `id` (UUID), `name`, `email`, `username` (unique), `password` (BCrypt), `createdAt`, `updatedAt`
 
 #### RefreshToken
+
 - `id` (Long), `token` (UUID), `user` (FK), `expiresAt`, `createdAt`
 - **Redis Cache:** Key format `refresh:user:{userId}`, 7-day TTL
 
 #### PasswordResetToken
+
 - `id` (Long), `token` (UUID), `user` (FK), `expiresAt`, `createdAt`
 - **Validity:** 1 hour
 
 #### Board
+
 - `id` (UUID), `name`, `type` (enum), `description`, `owner` (FK User), `createdAt`, `updatedAt`
 - **Relationship:** One-to-Many with BoardList
 
 #### BoardList
+
 - `id` (UUID), `name`, `position` (integer), `board` (FK), `createdAt`, `updatedAt`
 - **Relationship:** Many-to-One with Board, One-to-Many with Card
 
 #### Card
+
 - `id` (UUID), `name`, `description`, `status` (enum), `position` (integer), `list` (FK), `createdAt`, `updatedAt`
 - **Status:** ACTIVE, ARCHIVED, COMPLETED
 
@@ -118,6 +131,7 @@ src/main/java/com/example/taskmanagerapi/
 ## API Endpoints
 
 ### Authentication
+
 ```
 POST   /api/auth/register          # Register new user (requires username)
 POST   /api/auth/login             # Login with email OR username
@@ -128,6 +142,7 @@ POST   /api/auth/reset-password    # Reset password with token
 ```
 
 ### User Management
+
 ```
 GET    /api/users/profile          # Get current user profile (includes username)
 PUT    /api/users/profile          # Update user profile
@@ -135,6 +150,7 @@ DELETE /api/users/profile          # Delete user account
 ```
 
 ### Boards (NEW ✨)
+
 ```
 POST   /boards                     # Create new board
 GET    /boards                     # List all user's boards
@@ -144,6 +160,7 @@ DELETE /boards/{id}                # Delete board (cascades to lists and cards)
 ```
 
 ### Lists (NEW ✨)
+
 ```
 POST   /boards/{boardId}/lists                    # Create list in board
 GET    /boards/{boardId}/lists                    # Get all lists from board
@@ -153,6 +170,7 @@ DELETE /boards/{boardId}/lists/{listId}           # Delete list (cascades to car
 ```
 
 ### Cards (NEW ✨)
+
 ```
 POST   /boards/{boardId}/lists/{listId}/cards              # Create card in list
 GET    /boards/{boardId}/lists/{listId}/cards              # Get all cards from list
@@ -166,6 +184,7 @@ DELETE /boards/{boardId}/lists/{listId}/cards/{cardId}     # Delete card
 ## Configuration
 
 ### application.properties
+
 ```properties
 # Database (H2 in-memory)
 spring.datasource.url=jdbc:h2:mem:testdb
@@ -190,7 +209,9 @@ spring.mail.password=your-app-password
 ```
 
 ### Environment Variables (Production)
+
 Override any property using environment variables:
+
 ```bash
 export API_SECURITY_TOKEN_SECRET="strong-production-key"
 export SPRING_MAIL_USERNAME="noreply@yourdomain.com"
@@ -203,6 +224,7 @@ export APP_FRONTEND_URL="https://yourdomain.com"
 ## Running the Application
 
 ### Option 1: Docker Compose (Recommended)
+
 ```bash
 # Start Redis + Application
 docker-compose up -d
@@ -215,6 +237,7 @@ docker-compose down
 ```
 
 ### Option 2: Local Development
+
 ```bash
 # Terminal 1: Start Redis
 docker run -d -p 6379:6379 redis:7-alpine
@@ -224,6 +247,7 @@ mvn spring-boot:run
 ```
 
 ### Option 3: Production JAR
+
 ```bash
 mvn clean package -DskipTests
 java -jar target/task-manager-api-1.0.0.jar
@@ -233,14 +257,15 @@ java -jar target/task-manager-api-1.0.0.jar
 
 ## Access Points
 
-| Service | URL |
-|---------|-----|
-| API Base | http://localhost:8080 |
+| Service    | URL                                   |
+| ---------- | ------------------------------------- |
+| API Base   | http://localhost:8080                 |
 | Swagger UI | http://localhost:8080/swagger-ui.html |
-| H2 Console | http://localhost:8080/h2-console |
-| Redis | localhost:6379 |
+| H2 Console | http://localhost:8080/h2-console      |
+| Redis      | localhost:6379                        |
 
 **H2 Console Credentials:**
+
 - JDBC URL: `jdbc:h2:mem:testdb`
 - Username: `admin`
 - Password: _(empty)_
@@ -250,6 +275,7 @@ java -jar target/task-manager-api-1.0.0.jar
 ## Authentication Flow
 
 ### 1. User Registration
+
 ```http
 POST /api/auth/register
 Content-Type: application/json
@@ -263,6 +289,7 @@ Content-Type: application/json
 ```
 
 **Response:**
+
 ```json
 {
   "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
@@ -272,6 +299,7 @@ Content-Type: application/json
 ```
 
 ### 2. Login (Email OR Username)
+
 ```http
 POST /api/auth/login
 Content-Type: application/json
@@ -283,12 +311,14 @@ Content-Type: application/json
 ```
 
 ### 3. Access Protected Endpoints
+
 ```http
 GET /boards
 Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 ```
 
 ### 4. Refresh Access Token (Before Expiration)
+
 ```http
 POST /api/auth/refresh
 Content-Type: application/json
@@ -299,6 +329,7 @@ Content-Type: application/json
 ```
 
 **Response:**
+
 ```json
 {
   "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
@@ -308,6 +339,7 @@ Content-Type: application/json
 ```
 
 ### 5. Logout
+
 ```http
 POST /api/auth/logout
 Content-Type: application/json
@@ -322,33 +354,39 @@ Content-Type: application/json
 ## Redis Caching Strategy
 
 ### Cache Key Format
+
 - **Refresh Tokens:** `refresh:user:{userId}`
 - **TTL:** 7 days (matches refresh token expiration)
 
 ### Cache Operations
 
 #### Read (Token Validation)
+
 1. Check Redis cache (~5ms)
 2. If cache miss → Query database (~50ms)
 3. Warm cache with result
 4. Return token
 
 #### Write (Token Creation)
+
 1. Save to database
 2. Cache in Redis with TTL
 3. Return token
 
 #### Update (Token Refresh)
+
 1. Validate existing token (from cache)
 2. Invalidate old cache entry
 3. Create new tokens
 4. Cache new refresh token
 
 #### Delete (Logout)
+
 1. Remove from Redis cache
 2. Delete from database
 
 ### Performance Impact
+
 - **Before:** 666 DB queries/min (10k users, 15-min tokens)
 - **After:** ~7 DB queries/min (10k users, 4-hour tokens + cache)
 - **Improvement:** 99% reduction in database load
@@ -358,6 +396,7 @@ Content-Type: application/json
 ## Email System
 
 ### Password Reset Flow
+
 1. User requests reset: `POST /api/auth/forgot-password`
 2. System generates token (1-hour validity)
 3. Email sent with reset link: `{FRONTEND_URL}/reset-password?token={token}`
@@ -365,6 +404,7 @@ Content-Type: application/json
 5. Token invalidated, password updated
 
 ### Gmail Configuration
+
 1. Enable 2FA: https://myaccount.google.com/security
 2. Generate App Password: https://myaccount.google.com/apppasswords
 3. Use 16-character password in `application.properties`
@@ -374,23 +414,27 @@ Content-Type: application/json
 ## Security
 
 ### Password Hashing
+
 - **Algorithm:** BCrypt
 - **Strength:** 10 rounds
 - **Implementation:** Spring Security `BCryptPasswordEncoder`
 
 ### JWT Configuration
+
 - **Algorithm:** HMAC SHA-256
 - **Access Token:** 4 hours
 - **Refresh Token:** 7 days
 - **Secret:** Configurable via `api.security.token.secret`
 
 ### CORS
+
 - **Allowed Origin:** Configured via `app.frontend.url`
 - **Allowed Methods:** GET, POST, PUT, DELETE
 - **Allowed Headers:** Authorization, Content-Type
 - **Credentials:** Enabled
 
 ### Security Headers
+
 - Stateless session management
 - CSRF disabled (JWT-based auth)
 - HTTP Basic disabled
@@ -400,6 +444,7 @@ Content-Type: application/json
 ## Testing
 
 ### Manual Testing with Swagger
+
 1. Start application: `docker-compose up -d`
 2. Open Swagger: http://localhost:8080/swagger-ui.html
 3. Register user via `/api/auth/register`
@@ -410,6 +455,7 @@ Content-Type: application/json
 ### cURL Examples
 
 **Register:**
+
 ```bash
 curl -X POST http://localhost:8080/api/auth/register \
   -H "Content-Type: application/json" \
@@ -417,6 +463,7 @@ curl -X POST http://localhost:8080/api/auth/register \
 ```
 
 **Login (with username):**
+
 ```bash
 curl -X POST http://localhost:8080/api/auth/login \
   -H "Content-Type: application/json" \
@@ -424,6 +471,7 @@ curl -X POST http://localhost:8080/api/auth/login \
 ```
 
 **Create Board:**
+
 ```bash
 curl -X POST http://localhost:8080/boards \
   -H "Authorization: Bearer YOUR_TOKEN" \
@@ -432,6 +480,7 @@ curl -X POST http://localhost:8080/boards \
 ```
 
 **Create List:**
+
 ```bash
 curl -X POST http://localhost:8080/boards/{boardId}/lists \
   -H "Authorization: Bearer YOUR_TOKEN" \
@@ -440,6 +489,7 @@ curl -X POST http://localhost:8080/boards/{boardId}/lists \
 ```
 
 **Create Card:**
+
 ```bash
 curl -X POST http://localhost:8080/boards/{boardId}/lists/{listId}/cards \
   -H "Authorization: Bearer YOUR_TOKEN" \
@@ -452,6 +502,7 @@ curl -X POST http://localhost:8080/boards/{boardId}/lists/{listId}/cards \
 ## Monitoring
 
 ### Redis CLI
+
 ```bash
 # Connect to Redis
 docker exec -it taskmanager-redis redis-cli
@@ -470,6 +521,7 @@ GET refresh:user:550e8400-e29b-41d4-a716-446655440000
 ```
 
 ### Application Logs
+
 ```bash
 # Follow logs
 docker-compose logs -f app
@@ -486,26 +538,32 @@ docker-compose logs app | grep Redis
 ## Dependencies
 
 ### Core
+
 - `spring-boot-starter-web` - REST API
 - `spring-boot-starter-data-jpa` - Database ORM
 - `spring-boot-starter-security` - Authentication/Authorization
 - `spring-boot-starter-validation` - DTO validation
 
 ### Database
+
 - `h2` - In-memory database (development)
 - `spring-boot-starter-data-redis` - Redis integration
 - `jedis` - Redis client
 
 ### Security
+
 - `java-jwt` (Auth0 4.5.0) - JWT token handling
 
 ### Email
+
 - `spring-boot-starter-mail` - SMTP integration
 
 ### Documentation
+
 - `springdoc-openapi-starter-webmvc-ui` (2.3.0) - Swagger UI
 
 ### Utilities
+
 - `lombok` - Reduce boilerplate code
 
 ---
@@ -513,12 +571,14 @@ docker-compose logs app | grep Redis
 ## Build Information
 
 **Maven:**
+
 - Group: `com.example`
 - Artifact: `task-manager-api`
 - Version: `1.0.0`
 - Java: `17`
 
 **Build Output:**
+
 - JAR: `target/task-manager-api-1.0.0.jar`
 - Size: ~75 MB (includes dependencies)
 
@@ -527,6 +587,7 @@ docker-compose logs app | grep Redis
 ## Production Deployment
 
 ### Docker Compose (VPS)
+
 1. Clone repository
 2. Set environment variables:
    ```bash
@@ -537,6 +598,7 @@ docker-compose logs app | grep Redis
 3. Deploy: `docker-compose up -d --build`
 
 ### Kubernetes
+
 1. Create secrets:
    ```bash
    kubectl create secret generic taskmanager-secrets \
@@ -547,6 +609,7 @@ docker-compose logs app | grep Redis
 3. Expose via LoadBalancer/Ingress
 
 ### AWS ECS
+
 1. Push image to ECR
 2. Create task definition with secrets from AWS Secrets Manager
 3. Create ECS service with Redis from ElastiCache
@@ -556,6 +619,7 @@ docker-compose logs app | grep Redis
 ## Troubleshooting
 
 ### Redis Connection Failed
+
 ```bash
 # Check if Redis is running
 docker ps | grep redis
@@ -566,17 +630,20 @@ docker exec -it taskmanager-redis redis-cli ping
 ```
 
 ### Email Not Sending
+
 - Verify Gmail App Password (not account password)
 - Check `spring.mail.username` and `spring.mail.password`
 - Ensure 2FA enabled on Gmail account
 - Check firewall allows outbound port 587
 
 ### JWT Token Invalid
+
 - Verify `api.security.token.secret` matches between runs
 - Check token expiration time
 - Ensure Bearer token format: `Authorization: Bearer <token>`
 
 ### H2 Console Not Accessible
+
 - Verify `spring.h2.console.enabled=true`
 - Access via: http://localhost:8080/h2-console
 - Use JDBC URL: `jdbc:h2:mem:testdb`
@@ -586,12 +653,14 @@ docker exec -it taskmanager-redis redis-cli ping
 ## Migration Notes
 
 ### From Tasks to Boards (v2.0)
+
 - **Old:** Simple task management (DEPRECATED)
 - **New:** Hierarchical board system (Board → Lists → Cards)
 - **Migration:** No automatic migration - boards are a new feature
 - **Coexistence:** Old task endpoints removed in favor of board system
 
 ### From 15-minute to 4-hour Tokens
+
 - **Old:** Users refreshed every 15 minutes
 - **New:** Users refresh every ~3.5 hours
 - **Impact:** 16x reduction in refresh requests
@@ -601,7 +670,9 @@ docker exec -it taskmanager-redis redis-cli ping
 ## Changelog
 
 ### v2.0.0 (March 2026) - Modular Board System
+
 **✨ New Features:**
+
 - Added username field to User entity (unique, required)
 - Implemented flexible login (email OR username)
 - Created modular board system (boards, lists, cards)
@@ -613,6 +684,7 @@ docker exec -it taskmanager-redis redis-cli ping
 - Auto-positioning for lists and cards
 
 **♻️ Refactoring:**
+
 - Separated modules: boards/, lists/, cards/
 - Applied Single Responsibility Principle (SRP)
 - Controllers now are thin (only HTTP handling)
@@ -620,17 +692,20 @@ docker exec -it taskmanager-redis redis-cli ping
 - Removed deprecated tasks/ module
 
 **🔧 Improvements:**
+
 - Added null safety validations in all controllers
 - Created spring-configuration-metadata.json for custom properties
 - Updated Swagger documentation with new endpoints
 - Added comprehensive API documentation
 
 **📝 Documentation:**
+
 - Updated DOCUMENTATION.md with board system
 - Created REFACTORING_SUMMARY.md
 - Created APPLICATION_PROPERTIES_GUIDE.md
 
 ### v1.0.0 (February 2026) - Initial Release
+
 - JWT Authentication with refresh tokens
 - Redis caching for token validation
 - Email-based password reset
@@ -658,6 +733,7 @@ This project is licensed under the MIT License.
 ## Support
 
 For issues, questions, or contributions:
+
 - Create an issue on GitHub
 - Contact: jonasmessias30@gmail.com
 
@@ -666,6 +742,7 @@ For issues, questions, or contributions:
 **Last Updated:** March 3, 2026
 
 ### Redis Cache Integration
+
 - **Backward Compatible:** Works with existing database
 - **Migration:** No schema changes required
 - **Behavior:** First request hits DB, subsequent requests use cache
@@ -673,9 +750,11 @@ For issues, questions, or contributions:
 ---
 
 ## License
+
 This project is for educational/demonstration purposes.
 
 ---
 
 ## Contact
+
 Repository: github.com/reazew/task-manager-api
