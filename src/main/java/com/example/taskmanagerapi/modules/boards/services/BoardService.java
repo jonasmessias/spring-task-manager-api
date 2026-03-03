@@ -1,5 +1,6 @@
 package com.example.taskmanagerapi.modules.boards.services;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -16,6 +17,7 @@ import com.example.taskmanagerapi.modules.boards.dto.CreateBoardDTO;
 import com.example.taskmanagerapi.modules.boards.dto.UpdateBoardDTO;
 import com.example.taskmanagerapi.modules.boards.repositories.BoardRepository;
 import com.example.taskmanagerapi.modules.lists.services.BoardListService;
+import com.example.taskmanagerapi.modules.workspaces.domain.Workspace;
 
 import lombok.RequiredArgsConstructor;
 
@@ -23,6 +25,7 @@ import lombok.RequiredArgsConstructor;
  * BoardService - Business logic for board operations
  * Single Responsibility: Handle business rules for boards
  * Communicates with BoardListService for cascade operations
+ * Now integrated with Workspace hierarchy
  */
 @Service
 @RequiredArgsConstructor
@@ -32,23 +35,26 @@ public class BoardService {
     private final BoardListService listService;
 
     /**
-     * Create a new board for a user
+     * Create a new board for a user within a workspace
      */
     @Transactional
-    public BoardResponseDTO createBoard(@NonNull CreateBoardDTO dto, @NonNull User owner) {
+    public BoardResponseDTO createBoard(@NonNull CreateBoardDTO dto, @NonNull User owner, @NonNull Workspace workspace) {
         Board board = new Board();
         board.setName(dto.name());
         board.setType(dto.type() != null ? dto.type() : BoardType.BOARD);
         board.setDescription(dto.description());
         board.setOwner(owner);
+        board.setWorkspace(workspace);
         
         Board savedBoard = boardRepository.save(board);
         return new BoardResponseDTO(savedBoard);
     }
 
     /**
-     * Get all boards for a user, ordered by creation date
+     * Get all boards for a user, ordered by creation date (legacy method)
+     * @deprecated Use getBoardsByWorkspace instead
      */
+    @Deprecated
     public List<BoardResponseDTO> getBoardsByUser(@NonNull User user) {
         return boardRepository.findByOwnerOrderByCreatedAtDesc(user)
                 .stream()
@@ -57,10 +63,32 @@ public class BoardService {
     }
 
     /**
-     * Get boards by user and type
+     * Get all boards for a workspace, ordered by creation date
      */
+    public List<BoardResponseDTO> getBoardsByWorkspace(@NonNull Workspace workspace) {
+        return boardRepository.findByWorkspaceOrderByCreatedAtDesc(workspace)
+                .stream()
+                .map(BoardResponseDTO::new)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Get boards by user and type (legacy method)
+     * @deprecated Use getBoardsByWorkspaceAndType instead
+     */
+    @Deprecated
     public List<BoardResponseDTO> getBoardsByUserAndType(@NonNull User user, @NonNull BoardType type) {
         return boardRepository.findByOwnerAndType(user, type)
+                .stream()
+                .map(BoardResponseDTO::new)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Get boards by workspace and type
+     */
+    public List<BoardResponseDTO> getBoardsByWorkspaceAndType(@NonNull Workspace workspace, @NonNull BoardType type) {
+        return boardRepository.findByWorkspaceAndType(workspace, type)
                 .stream()
                 .map(BoardResponseDTO::new)
                 .collect(Collectors.toList());
@@ -90,6 +118,7 @@ public class BoardService {
             board.setDescription(dto.description());
         }
         
+        board.setUpdatedAt(LocalDateTime.now());
         Board updatedBoard = boardRepository.save(board);
         return new BoardResponseDTO(updatedBoard);
     }
@@ -110,5 +139,19 @@ public class BoardService {
             // Then delete the board
             boardRepository.deleteById(id);
         }
+    }
+
+    /**
+     * Check if a board belongs to a workspace
+     */
+    public boolean isBoardInWorkspace(@NonNull Board board, @NonNull Workspace workspace) {
+        return board.getWorkspace().getId().equals(workspace.getId());
+    }
+
+    /**
+     * Count boards in a workspace
+     */
+    public long countWorkspaceBoards(@NonNull Workspace workspace) {
+        return boardRepository.countByWorkspace(workspace);
     }
 }
