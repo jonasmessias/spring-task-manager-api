@@ -75,7 +75,9 @@ public class AuthController {
             @RequestHeader(value = "User-Agent", required = false) String userAgent,
             HttpServletRequest request) {
         
-        User user = this.repository.findByEmail(body.email())
+        // Try to find user by email or username
+        User user = this.repository.findByEmail(body.emailOrUsername())
+                .or(() -> this.repository.findByUsername(body.emailOrUsername()))
                 .orElseThrow(() -> new RuntimeException("User not found"));
         
         if(passwordEncoder.matches(body.password(), user.getPassword())){
@@ -101,7 +103,7 @@ public class AuthController {
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Successfully registered",
                 content = @Content(schema = @Schema(implementation = AuthResponseDTO.class))),
-        @ApiResponse(responseCode = "400", description = "Email already registered or passwords don't match")
+        @ApiResponse(responseCode = "400", description = "Email/username already registered or passwords don't match")
     })
     @PostMapping("/register")
     public ResponseEntity<Object> register(
@@ -113,31 +115,37 @@ public class AuthController {
             return ResponseEntity.badRequest().body("Passwords do not match");
         }
 
-        Optional<User> user = this.repository.findByEmail(body.email());
-
-        if(user.isEmpty()) {
-            User newUser = new User();
-            newUser.setPassword(passwordEncoder.encode(body.password()));
-            newUser.setEmail(body.email());
-            newUser.setName(body.name());
-            this.repository.save(newUser);
-
-            String accessToken = tokenService.generateToken(newUser);
-            String clientIp = getClientIp(request);
-            
-            // Create refresh token
-            RefreshToken refreshToken = refreshTokenService.createRefreshToken(newUser, clientIp, userAgent);
-            
-            // Audit log
-            auditLogService.logRegistration(newUser, clientIp);
-            
-            return ResponseEntity.ok(new AuthResponseDTO(
-                newUser.getName(), 
-                accessToken, 
-                refreshToken.getToken()
-            ));
+        Optional<User> existingEmail = this.repository.findByEmail(body.email());
+        if(existingEmail.isPresent()) {
+            return ResponseEntity.badRequest().body("Email already registered");
         }
-        return ResponseEntity.badRequest().body("Email already registered");
+        
+        Optional<User> existingUsername = this.repository.findByUsername(body.username());
+        if(existingUsername.isPresent()) {
+            return ResponseEntity.badRequest().body("Username already taken");
+        }
+
+        User newUser = new User();
+        newUser.setPassword(passwordEncoder.encode(body.password()));
+        newUser.setEmail(body.email());
+        newUser.setName(body.name());
+        newUser.setUsername(body.username());
+        this.repository.save(newUser);
+
+        String accessToken = tokenService.generateToken(newUser);
+        String clientIp = getClientIp(request);
+        
+        // Create refresh token
+        RefreshToken refreshToken = refreshTokenService.createRefreshToken(newUser, clientIp, userAgent);
+        
+        // Audit log
+        auditLogService.logRegistration(newUser, clientIp);
+        
+        return ResponseEntity.ok(new AuthResponseDTO(
+            newUser.getName(), 
+            accessToken, 
+            refreshToken.getToken()
+        ));
     }
 
     @Operation(summary = "Refresh Token", description = "Get a new access token using refresh token")
