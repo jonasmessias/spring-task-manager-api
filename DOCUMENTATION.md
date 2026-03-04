@@ -19,14 +19,16 @@ RESTful API for task and board management with JWT authentication, email notific
 - **Password Reset:** Email-based token system
 - **User Profile Management**
 
-### Board Management (NEW ✨)
+### Workspace & Board Management (NEW ✨)
 
-- **Modular Architecture:** Separate modules for Boards, Lists, and Cards
-- **Hierarchical Structure:** Board → Lists → Cards
+- **Modular Architecture:** Separate modules for Workspaces, Boards, Lists, and Cards
+- **Hierarchical Structure:** Workspace → Board → Lists → Cards
+- **Workspace Organization:** Group related boards in workspaces
 - **Board Types:** Extensible system (BOARD, future: KANBAN, CALENDAR)
-- **Complete CRUD:** Full operations on boards, lists, and cards
-- **Cascade Deletion:** Deleting a board removes all lists and cards
+- **Complete CRUD:** Full operations on workspaces, boards, lists, and cards
+- **Cascade Deletion:** Deleting a workspace removes all boards, lists, and cards
 - **Position Management:** Automatic positioning for lists and cards
+- **Owner Validation:** All entities belong to authenticated user
 
 ### Performance Optimization
 
@@ -67,19 +69,25 @@ src/main/java/com/example/taskmanagerapi/
     │   ├── dto/                   # Request/Response DTOs
     │   ├── repositories/          # JPA repositories
     │   └── services/              # Business logic
-    ├── boards/                    # Board management module (NEW ✨)
+    ├── workspaces/                # Workspace management module (NEW ✨)
+    │   ├── controllers/           # WorkspaceController
+    │   ├── domain/                # Workspace
+    │   ├── dto/                   # Workspace DTOs
+    │   ├── repositories/          # WorkspaceRepository
+    │   └── services/              # WorkspaceService
+    ├── boards/                    # Board management module
     │   ├── controllers/           # BoardController
     │   ├── domain/                # Board, BoardType
     │   ├── dto/                   # Board DTOs
     │   ├── repositories/          # BoardRepository
     │   └── services/              # BoardService
-    ├── lists/                     # List management module (NEW ✨)
+    ├── lists/                     # List management module
     │   ├── controllers/           # ListController
     │   ├── domain/                # BoardList
     │   ├── dto/                   # List DTOs
     │   ├── repositories/          # BoardListRepository
     │   └── services/              # BoardListService
-    └── cards/                     # Card management module (NEW ✨)
+    └── cards/                     # Card management module
         ├── controllers/           # CardController
         ├── domain/                # Card, CardStatus
         ├── dto/                   # Card DTOs
@@ -111,10 +119,16 @@ src/main/java/com/example/taskmanagerapi/
 - `id` (Long), `token` (UUID), `user` (FK), `expiresAt`, `createdAt`
 - **Validity:** 1 hour
 
+#### Workspace (NEW ✨)
+
+- `id` (UUID), `name`, `owner` (FK User), `createdAt`, `updatedAt`
+- **Relationship:** One-to-Many with Board
+- **Validation:** Unique name per user
+
 #### Board
 
-- `id` (UUID), `name`, `type` (enum), `description`, `owner` (FK User), `createdAt`, `updatedAt`
-- **Relationship:** One-to-Many with BoardList
+- `id` (UUID), `name`, `type` (enum), `description`, `workspace` (FK), `owner` (FK User), `createdAt`, `updatedAt`
+- **Relationship:** Many-to-One with Workspace, One-to-Many with BoardList
 
 #### BoardList
 
@@ -149,11 +163,21 @@ PUT    /api/users/profile          # Update user profile
 DELETE /api/users/profile          # Delete user account
 ```
 
-### Boards (NEW ✨)
+### Workspaces (NEW ✨)
 
 ```
-POST   /boards                     # Create new board
-GET    /boards                     # List all user's boards
+POST   /workspaces                 # Create new workspace
+GET    /workspaces                 # List all user's workspaces (with board count)
+GET    /workspaces/{id}            # Get workspace details (with all boards)
+PUT    /workspaces/{id}            # Update workspace name
+DELETE /workspaces/{id}            # Delete workspace (cascades to boards, lists, cards)
+```
+
+### Boards
+
+```
+POST   /boards?workspaceId={id}   # Create new board in workspace
+GET    /boards?workspaceId={id}   # List all boards from workspace
 GET    /boards/{id}                # Get board details (with lists and cards)
 PUT    /boards/{id}                # Update board
 DELETE /boards/{id}                # Delete board (cascades to lists and cards)
@@ -470,10 +494,19 @@ curl -X POST http://localhost:8080/api/auth/login \
   -d '{"emailOrUsername":"testuser","password":"test123"}'
 ```
 
+**Create Workspace:**
+
+```bash
+curl -X POST http://localhost:8080/workspaces \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"My Workspace"}'
+```
+
 **Create Board:**
 
 ```bash
-curl -X POST http://localhost:8080/boards \
+curl -X POST "http://localhost:8080/boards?workspaceId=YOUR_WORKSPACE_ID" \
   -H "Authorization: Bearer YOUR_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"name":"My Project","type":"BOARD","description":"Main project board"}'
@@ -652,6 +685,13 @@ docker exec -it taskmanager-redis redis-cli ping
 
 ## Migration Notes
 
+### From Boards to Workspace System (v2.1 - March 2026)
+
+- **Old:** Boards as top-level entities (User → Board → Lists → Cards)
+- **New:** Workspace organization layer (User → Workspace → Board → Lists → Cards)
+- **Migration:** Existing boards must be assigned to workspaces
+- **Feature:** Group related boards in workspaces for better organization
+
 ### From Tasks to Boards (v2.0)
 
 - **Old:** Simple task management (DEPRECATED)
@@ -668,6 +708,30 @@ docker exec -it taskmanager-redis redis-cli ping
 ---
 
 ## Changelog
+
+### v2.1.0 (March 2026) - Workspace Organization Layer
+
+**✨ New Features:**
+
+- Added Workspace entity as top-level organization layer
+- Implemented Workspace CRUD operations
+- Updated hierarchy: User → Workspace → Board → Lists → Cards
+- Boards now require a workspace (workspaceId parameter)
+- Workspace name uniqueness per user
+- Cascade deletion: Workspace → Boards → Lists → Cards
+- Owner validation for all workspace operations
+
+**🔧 Improvements:**
+
+- Fixed null safety warnings with Objects.requireNonNull()
+- Added workspace validation in BoardController
+- Updated OpenAPI documentation with Workspace endpoints
+- Helper methods for bidirectional relationships (addBoard, removeBoard)
+
+**📝 Documentation:**
+
+- Updated DOCUMENTATION.md with workspace system
+- Added migration notes for workspace layer
 
 ### v2.0.0 (March 2026) - Modular Board System
 
@@ -739,7 +803,7 @@ For issues, questions, or contributions:
 
 ---
 
-**Last Updated:** March 3, 2026
+**Last Updated:** March 4, 2026
 
 ### Redis Cache Integration
 
