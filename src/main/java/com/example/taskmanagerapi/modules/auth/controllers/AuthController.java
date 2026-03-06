@@ -23,6 +23,7 @@ import com.example.taskmanagerapi.modules.auth.dto.AuthResponseDTO;
 import com.example.taskmanagerapi.modules.auth.dto.ErrorResponseDTO;
 import com.example.taskmanagerapi.modules.auth.dto.ForgotPasswordRequestDTO;
 import com.example.taskmanagerapi.modules.auth.dto.LoginRequestDTO;
+import com.example.taskmanagerapi.modules.auth.dto.MessageResponseDTO;
 import com.example.taskmanagerapi.modules.auth.dto.RefreshTokenRequestDTO;
 import com.example.taskmanagerapi.modules.auth.dto.RegisterRequestDTO;
 import com.example.taskmanagerapi.modules.auth.dto.ResetPasswordDTO;
@@ -73,7 +74,10 @@ public class AuthController {
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Successfully authenticated",
                 content = @Content(schema = @Schema(implementation = AuthResponseDTO.class))),
-        @ApiResponse(responseCode = "400", description = "Invalid credentials")
+        @ApiResponse(responseCode = "401", description = "Invalid credentials — `INVALID_CREDENTIALS`",
+                content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class))),
+        @ApiResponse(responseCode = "403", description = "Email not verified — `EMAIL_NOT_VERIFIED`",
+                content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class)))
     })
     @PostMapping("/login")
     public ResponseEntity<Object> login(
@@ -84,42 +88,48 @@ public class AuthController {
         // Try to find user by email or username
         User user = this.repository.findByEmail(body.emailOrUsername())
                 .or(() -> this.repository.findByUsername(body.emailOrUsername()))
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElse(null);
+
+        if (user == null || !passwordEncoder.matches(body.password(), user.getPassword())) {
+            return ResponseEntity.status(401).body(new ErrorResponseDTO(
+                "INVALID_CREDENTIALS",
+                "Invalid credentials.",
+                401
+            ));
+        }
 
         if (!user.isEmailVerified()) {
             return ResponseEntity.status(403).body(new ErrorResponseDTO(
                 "EMAIL_NOT_VERIFIED",
-                "Email not verified. Please check your inbox and verify your account."
+                "Email not verified. Please check your inbox and verify your account.",
+                403
             ));
         }
 
-        if(passwordEncoder.matches(body.password(), user.getPassword())){
-            String accessToken = tokenService.generateToken(user);
-            String clientIp = getClientIp(request);
-            
-            // Create refresh token
-            RefreshToken refreshToken = refreshTokenService.createRefreshToken(user, clientIp, userAgent);
-            
-            // Audit log
-            auditLogService.logLogin(user, clientIp, userAgent);
-            
-            return ResponseEntity.ok(new AuthResponseDTO(
-                user.getName(), 
-                accessToken, 
-                refreshToken.getToken()
-            ));
-        }
-        return ResponseEntity.badRequest().body(new ErrorResponseDTO(
-            "INVALID_CREDENTIALS",
-            "Invalid credentials."
+        String accessToken = tokenService.generateToken(user);
+        String clientIp = getClientIp(request);
+        
+        // Create refresh token
+        RefreshToken refreshToken = refreshTokenService.createRefreshToken(user, clientIp, userAgent);
+        
+        // Audit log
+        auditLogService.logLogin(user, clientIp, userAgent);
+        
+        return ResponseEntity.ok(new AuthResponseDTO(
+            user.getName(), 
+            accessToken, 
+            refreshToken.getToken()
         ));
     }
 
-    @Operation(summary = "Register", description = "Create a new user account and return tokens")
+    @Operation(summary = "Register", description = "Create a new user account. Sends a verification email on success.")
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Successfully registered",
-                content = @Content(schema = @Schema(implementation = AuthResponseDTO.class))),
-        @ApiResponse(responseCode = "400", description = "Email/username already registered or passwords don't match")
+        @ApiResponse(responseCode = "201", description = "Account created — verification email sent",
+                content = @Content(schema = @Schema(implementation = MessageResponseDTO.class))),
+        @ApiResponse(responseCode = "400", description = "Validation error — `PASSWORDS_DO_NOT_MATCH`, `EMAIL_ALREADY_EXISTS`, `USERNAME_ALREADY_EXISTS`",
+                content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class))),
+        @ApiResponse(responseCode = "500", description = "Email service error — `EMAIL_SEND_ERROR`",
+                content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class)))
     })
     @PostMapping("/register")
     public ResponseEntity<Object> register(
@@ -128,17 +138,29 @@ public class AuthController {
             HttpServletRequest request) {
 
         if(!body.password().equals(body.confirmPassword())){
-            return ResponseEntity.badRequest().body("Passwords do not match");
+            return ResponseEntity.badRequest().body(new ErrorResponseDTO(
+                "PASSWORDS_DO_NOT_MATCH",
+                "Passwords do not match.",
+                400
+            ));
         }
 
         Optional<User> existingEmail = this.repository.findByEmail(body.email());
         if(existingEmail.isPresent()) {
-            return ResponseEntity.badRequest().body("Email already registered");
+            return ResponseEntity.badRequest().body(new ErrorResponseDTO(
+                "EMAIL_ALREADY_EXISTS",
+                "Email already registered.",
+                400
+            ));
         }
         
         Optional<User> existingUsername = this.repository.findByUsername(body.username());
         if(existingUsername.isPresent()) {
-            return ResponseEntity.badRequest().body("Username already taken");
+            return ResponseEntity.badRequest().body(new ErrorResponseDTO(
+                "USERNAME_ALREADY_EXISTS",
+                "Username already taken.",
+                400
+            ));
         }
 
         User newUser = new User();
@@ -173,7 +195,9 @@ public class AuthController {
         String clientIp = getClientIp(request);
         auditLogService.logRegistration(newUser, clientIp);
 
-        return ResponseEntity.ok("Registration successful! Please check your email to verify your account.");
+        return ResponseEntity.status(201).body(new MessageResponseDTO(
+            "Registration successful! Please check your email to verify your account."
+        ));
     }
 
     @Operation(summary = "Refresh Token", description = "Get a new access token using refresh token")
@@ -255,8 +279,10 @@ public class AuthController {
 
     @Operation(summary = "Verify Email", description = "Verify user email address using the token sent by email")
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Email verified successfully"),
-        @ApiResponse(responseCode = "400", description = "Invalid or expired token")
+        @ApiResponse(responseCode = "200", description = "Email verified successfully",
+                content = @Content(schema = @Schema(implementation = MessageResponseDTO.class))),
+        @ApiResponse(responseCode = "400", description = "Token error — `INVALID_TOKEN`, `EXPIRED_TOKEN`, `EMAIL_ALREADY_VERIFIED`",
+                content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class)))
     })
     @PostMapping("/verify-email")
     public ResponseEntity<Object> verifyEmail(
@@ -266,23 +292,45 @@ public class AuthController {
         Optional<EmailVerificationToken> tokenOpt = emailVerificationRepository.findByToken(body.token());
 
         if (tokenOpt.isEmpty()) {
-            return ResponseEntity.badRequest().body("Invalid verification token.");
+            return ResponseEntity.badRequest().body(new ErrorResponseDTO(
+                "INVALID_TOKEN",
+                "Invalid verification token.",
+                400
+            ));
         }
 
         EmailVerificationToken verificationToken = tokenOpt.get();
 
         if (verificationToken.getExpirationDate().isBefore(LocalDateTime.now())) {
             emailVerificationRepository.delete(verificationToken);
-            return ResponseEntity.badRequest().body("Verification token has expired. Please register again.");
+            return ResponseEntity.badRequest().body(new ErrorResponseDTO(
+                "EXPIRED_TOKEN",
+                "Verification token has expired. Please request a new one.",
+                400
+            ));
         }
 
         Optional<User> userOpt = repository.findByEmail(verificationToken.getEmail());
 
         if (userOpt.isEmpty()) {
-            return ResponseEntity.badRequest().body("User not found.");
+            return ResponseEntity.badRequest().body(new ErrorResponseDTO(
+                "INVALID_TOKEN",
+                "User not found for this token.",
+                400
+            ));
         }
 
         User user = userOpt.get();
+
+        if (user.isEmailVerified()) {
+            emailVerificationRepository.delete(verificationToken);
+            return ResponseEntity.badRequest().body(new ErrorResponseDTO(
+                "EMAIL_ALREADY_VERIFIED",
+                "This email is already verified. You can log in.",
+                400
+            ));
+        }
+
         user.setEmailVerified(true);
         repository.save(user);
 
@@ -290,13 +338,19 @@ public class AuthController {
 
         auditLogService.logEmailVerification(user, getClientIp(request));
 
-        return ResponseEntity.ok("Email verified successfully! You can now log in.");
+        return ResponseEntity.ok(new MessageResponseDTO("Email verified successfully! You can now log in."));
     }
 
     @Operation(summary = "Resend Verification Email", description = "Resend the email verification link to the user")
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Verification email resent"),
-        @ApiResponse(responseCode = "400", description = "Email not found or already verified")
+        @ApiResponse(responseCode = "200", description = "Verification email resent",
+                content = @Content(schema = @Schema(implementation = MessageResponseDTO.class))),
+        @ApiResponse(responseCode = "400", description = "Email already verified — `EMAIL_ALREADY_VERIFIED`",
+                content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class))),
+        @ApiResponse(responseCode = "404", description = "Email not found — `EMAIL_NOT_FOUND`",
+                content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class))),
+        @ApiResponse(responseCode = "500", description = "Email service error — `EMAIL_SEND_ERROR`",
+                content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class)))
     })
     @PostMapping("/resend-verification")
     public ResponseEntity<Object> resendVerification(@RequestBody ForgotPasswordRequestDTO body) {
@@ -304,9 +358,10 @@ public class AuthController {
         Optional<User> userOpt = this.repository.findByEmail(body.email());
 
         if (userOpt.isEmpty()) {
-            return ResponseEntity.badRequest().body(new ErrorResponseDTO(
+            return ResponseEntity.status(404).body(new ErrorResponseDTO(
                 "EMAIL_NOT_FOUND",
-                "E-mail not found."
+                "E-mail not found.",
+                404
             ));
         }
 
@@ -315,7 +370,8 @@ public class AuthController {
         if (user.isEmailVerified()) {
             return ResponseEntity.badRequest().body(new ErrorResponseDTO(
                 "EMAIL_ALREADY_VERIFIED",
-                "This email is already verified. You can log in."
+                "This email is already verified. You can log in.",
+                400
             ));
         }
 
@@ -339,7 +395,7 @@ public class AuthController {
 
         emailService.sendEmail(body.email(), "Novo link de verificação - Task Manager", message);
 
-        return ResponseEntity.ok("Verification email resent to: " + body.email());
+        return ResponseEntity.ok(new MessageResponseDTO("Verification email resent successfully."));
     }
 
     @Operation(summary = "Forgot Password", description = "Send password reset email to user")
