@@ -182,67 +182,67 @@ Authorization: Bearer <access_token>
 
 ### Auth
 
-| Method | Path                      | Auth | Status | Description                                    |
-| ------ | ------------------------- | ---- | ------ | ---------------------------------------------- |
-| POST   | /auth/register            | No   | 201    | Create account and send verification email     |
-| POST   | /auth/verify-email        | No   | 200    | Verify email with token from inbox             |
-| POST   | /auth/resend-verification | No   | 200    | Resend verification email                      |
-| POST   | /auth/login               | No   | 200    | Login and receive access + refresh token       |
-| POST   | /auth/refresh             | No   | 200    | Get new access token using refresh token       |
-| POST   | /auth/logout              | Yes  | 200    | Invalidate current session                     |
-| POST   | /auth/logout-all          | Yes  | 200    | Invalidate all sessions                        |
-| POST   | /auth/forgot-password     | No   | 200    | Send password reset email                      |
-| POST   | /auth/reset-password      | No   | 200    | Reset password with token                      |
+| Method | Path                      | Auth | Status | Description                                |
+| ------ | ------------------------- | ---- | ------ | ------------------------------------------ |
+| POST   | /auth/register            | No   | 201    | Create account and send verification email |
+| POST   | /auth/verify-email        | No   | 200    | Verify email with token from inbox         |
+| POST   | /auth/resend-verification | No   | 200    | Resend verification email                  |
+| POST   | /auth/login               | No   | 200    | Login and receive access + refresh token   |
+| POST   | /auth/refresh             | No   | 200    | Get new access token using refresh token   |
+| POST   | /auth/logout              | Yes  | 200    | Invalidate current session                 |
+| POST   | /auth/logout-all          | Yes  | 200    | Invalidate all sessions                    |
+| POST   | /auth/forgot-password     | No   | 200    | Send password reset email                  |
+| POST   | /auth/reset-password      | No   | 200    | Reset password with token                  |
 
 ### Users
 
-| Method | Path        | Auth | Status | Description                      |
-| ------ | ----------- | ---- | ------ | -------------------------------- |
-| GET    | /users/me   | Yes  | 200    | Get current authenticated user   |
-| PUT    | /users/me   | Yes  | 200    | Update profile (name, username)  |
-| DELETE | /users/me   | Yes  | 204    | Delete own account               |
-| GET    | /users/{id} | Yes  | 200    | Get user by ID                   |
+| Method | Path        | Auth | Status | Description                     |
+| ------ | ----------- | ---- | ------ | ------------------------------- |
+| GET    | /users/me   | Yes  | 200    | Get current authenticated user  |
+| PUT    | /users/me   | Yes  | 200    | Update profile (name, username) |
+| DELETE | /users/me   | Yes  | 204    | Delete own account              |
+| GET    | /users/{id} | Yes  | 200    | Get user by ID                  |
 
 ### Workspaces
 
-| Method | Path             | Auth | Status | Description                           |
-| ------ | ---------------- | ---- | ------ | ------------------------------------- |
-| POST   | /workspaces      | Yes  | 201    | Create workspace                      |
-| GET    | /workspaces      | Yes  | 200    | List all workspaces                   |
-| GET    | /workspaces/{id} | Yes  | 200    | Get workspace with boards             |
-| PUT    | /workspaces/{id} | Yes  | 200    | Update workspace                      |
-| DELETE | /workspaces/{id} | Yes  | 204    | Delete workspace and all its content  |
+| Method | Path             | Auth | Status | Description                          |
+| ------ | ---------------- | ---- | ------ | ------------------------------------ |
+| POST   | /workspaces      | Yes  | 201    | Create workspace                     |
+| GET    | /workspaces      | Yes  | 200    | List all workspaces                  |
+| GET    | /workspaces/{id} | Yes  | 200    | Get workspace with boards            |
+| PUT    | /workspaces/{id} | Yes  | 200    | Update workspace                     |
+| DELETE | /workspaces/{id} | Yes  | 204    | Delete workspace and all its content |
 
 ### Boards
 
-| Method | Path                     | Auth | Status | Description                       |
-| ------ | ------------------------ | ---- | ------ | --------------------------------- |
-| POST   | /boards?workspaceId={id} | Yes  | 201    | Create board in workspace         |
-| GET    | /boards?workspaceId={id} | Yes  | 200    | List boards from workspace        |
-| GET    | /boards/{id}             | Yes  | 200    | Get board with lists and cards    |
-| PUT    | /boards/{id}             | Yes  | 200    | Update board                      |
-| DELETE | /boards/{id}             | Yes  | 204    | Delete board and all its content  |
+| Method | Path                     | Auth | Status | Description                      |
+| ------ | ------------------------ | ---- | ------ | -------------------------------- |
+| POST   | /boards?workspaceId={id} | Yes  | 201    | Create board in workspace        |
+| GET    | /boards?workspaceId={id} | Yes  | 200    | List boards from workspace       |
+| GET    | /boards/{id}             | Yes  | 200    | Get board with lists and cards   |
+| PUT    | /boards/{id}             | Yes  | 200    | Update board                     |
+| DELETE | /boards/{id}             | Yes  | 204    | Delete board and all its content |
 
 ### Lists
 
-| Method | Path                             | Auth | Status | Description                |
-| ------ | -------------------------------- | ---- | ------ | -------------------------- |
-| POST   | /boards/{boardId}/lists          | Yes  | 201    | Create list                |
-| GET    | /boards/{boardId}/lists          | Yes  | 200    | Get all lists              |
-| GET    | /boards/{boardId}/lists/{listId} | Yes  | 200    | Get list                   |
-| PUT    | /boards/{boardId}/lists/{listId} | Yes  | 200    | Update list                |
-| DELETE | /boards/{boardId}/lists/{listId} | Yes  | 204    | Delete list and its cards  |
+| Method | Path                             | Auth | Status | Description               |
+| ------ | -------------------------------- | ---- | ------ | ------------------------- |
+| POST   | /boards/{boardId}/lists          | Yes  | 201    | Create list               |
+| GET    | /boards/{boardId}/lists          | Yes  | 200    | Get all lists             |
+| GET    | /boards/{boardId}/lists/{listId} | Yes  | 200    | Get list                  |
+| PUT    | /boards/{boardId}/lists/{listId} | Yes  | 200    | Update list               |
+| DELETE | /boards/{boardId}/lists/{listId} | Yes  | 204    | Delete list and its cards |
 
 ### Cards
 
-| Method | Path                                                 | Auth | Status | Description                    |
-| ------ | ---------------------------------------------------- | ---- | ------ | ------------------------------ |
-| POST   | /boards/{boardId}/lists/{listId}/cards               | Yes  | 201    | Create card                    |
-| GET    | /boards/{boardId}/lists/{listId}/cards               | Yes  | 200    | Get all cards                  |
-| GET    | /boards/{boardId}/lists/{listId}/cards/{cardId}      | Yes  | 200    | Get card                       |
-| PUT    | /boards/{boardId}/lists/{listId}/cards/{cardId}      | Yes  | 200    | Update card                    |
-| PATCH  | /boards/{boardId}/lists/{listId}/cards/{cardId}/move | Yes  | 200    | Move card to a different list  |
-| DELETE | /boards/{boardId}/lists/{listId}/cards/{cardId}      | Yes  | 204    | Delete card                    |
+| Method | Path                                                 | Auth | Status | Description                   |
+| ------ | ---------------------------------------------------- | ---- | ------ | ----------------------------- |
+| POST   | /boards/{boardId}/lists/{listId}/cards               | Yes  | 201    | Create card                   |
+| GET    | /boards/{boardId}/lists/{listId}/cards               | Yes  | 200    | Get all cards                 |
+| GET    | /boards/{boardId}/lists/{listId}/cards/{cardId}      | Yes  | 200    | Get card                      |
+| PUT    | /boards/{boardId}/lists/{listId}/cards/{cardId}      | Yes  | 200    | Update card                   |
+| PATCH  | /boards/{boardId}/lists/{listId}/cards/{cardId}/move | Yes  | 200    | Move card to a different list |
+| DELETE | /boards/{boardId}/lists/{listId}/cards/{cardId}      | Yes  | 204    | Delete card                   |
 
 Card status values: `ACTIVE`, `ARCHIVED`, `COMPLETED`.
 
