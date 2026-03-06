@@ -1,6 +1,6 @@
 # Task Manager API
 
-Java Â· Spring Boot Â· JWT Â· Redis Â· H2 Â· Docker
+Java · Spring Boot · JWT · Redis · H2 · Docker
 
 ---
 
@@ -61,7 +61,7 @@ Authorization: Bearer <access_token>
 **1 - Register an account**
 
 ```
-POST http://localhost:8080/auth/register
+POST > http://localhost:8080/auth/register
 ```
 ```json
 {
@@ -78,7 +78,7 @@ A verification email will be sent to the provided address.
 **2 - Verify your email**
 
 ```
-POST http://localhost:8080/auth/verify-email
+POST > http://localhost:8080/auth/verify-email
 ```
 ```json
 { "token": "<token_from_email>" }
@@ -87,7 +87,7 @@ POST http://localhost:8080/auth/verify-email
 **3 - Login**
 
 ```
-POST http://localhost:8080/auth/login
+POST > http://localhost:8080/auth/login
 ```
 ```json
 { "emailOrUsername": "johndoe", "password": "secret123" }
@@ -101,7 +101,7 @@ Response:
 Access token expires in **4 hours**. Use the refresh token to get a new one:
 
 ```
-POST http://localhost:8080/auth/refresh
+POST > http://localhost:8080/auth/refresh
 ```
 ```json
 { "refreshToken": "<refresh_token>" }
@@ -180,8 +180,9 @@ Card status values: `ACTIVE`, `ARCHIVED`, `COMPLETED`.
 ## Usage example
 
 **Create a workspace**
+
 ```
-POST http://localhost:8080/workspaces
+POST > http://localhost:8080/workspaces
 Authorization: Bearer <access_token>
 ```
 ```json
@@ -189,8 +190,9 @@ Authorization: Bearer <access_token>
 ```
 
 **Create a board inside the workspace**
+
 ```
-POST http://localhost:8080/boards?workspaceId=<workspace_id>
+POST > http://localhost:8080/boards?workspaceId=<workspace_id>
 Authorization: Bearer <access_token>
 ```
 ```json
@@ -198,8 +200,9 @@ Authorization: Bearer <access_token>
 ```
 
 **Create a list inside the board**
+
 ```
-POST http://localhost:8080/boards/<board_id>/lists
+POST > http://localhost:8080/boards/<board_id>/lists
 Authorization: Bearer <access_token>
 ```
 ```json
@@ -207,8 +210,9 @@ Authorization: Bearer <access_token>
 ```
 
 **Create a card inside the list**
+
 ```
-POST http://localhost:8080/boards/<board_id>/lists/<list_id>/cards
+POST > http://localhost:8080/boards/<board_id>/lists/<list_id>/cards
 Authorization: Bearer <access_token>
 ```
 ```json
