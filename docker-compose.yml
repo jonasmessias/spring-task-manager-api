@@ -1,4 +1,25 @@
 services:
+  # PostgreSQL database
+  postgres:
+    image: postgres:16-alpine
+    container_name: taskmanager-postgres
+    ports:
+      - '5432:5432'
+    environment:
+      POSTGRES_DB: taskmanager
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U admin -d taskmanager']
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - taskmanager-network
+    restart: unless-stopped
+
   # Redis service for caching refresh tokens
   redis:
     image: redis:7-alpine
@@ -28,8 +49,13 @@ services:
     environment:
       # Sobrescreve apenas o Redis host para conectar no container
       SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/taskmanager
+      SPRING_DATASOURCE_USERNAME: admin
+      SPRING_DATASOURCE_PASSWORD: admin
     depends_on:
       redis:
+        condition: service_healthy
+      postgres:
         condition: service_healthy
     networks:
       - taskmanager-network
@@ -41,4 +67,6 @@ networks:
 
 volumes:
   redis_data:
+    driver: local
+  postgres_data:
     driver: local

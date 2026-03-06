@@ -36,6 +36,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
 @RestController
@@ -58,14 +59,11 @@ public class BoardController {
     })
     @PostMapping
     public ResponseEntity<Object> createBoard(
-            @RequestBody CreateBoardDTO body,
+            @Valid @RequestBody CreateBoardDTO body,
             @Parameter(description = "Workspace ID", required = true) 
             @RequestParam("workspaceId") String workspaceId,
             @AuthenticationPrincipal User user) {
         
-        if (body == null) {
-            return ResponseEntity.badRequest().body("Request body is required");
-        }
         if (user == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("User not authenticated");
         }
@@ -179,7 +177,7 @@ public class BoardController {
     @PutMapping("/{id}")
     public ResponseEntity<Object> updateBoard(
             @Parameter(description = "Board ID", required = true) @PathVariable @NonNull String id,
-            @RequestBody UpdateBoardDTO body,
+            @Valid @RequestBody UpdateBoardDTO body,
             @AuthenticationPrincipal User user) {
         
         Optional<Board> boardOpt = boardService.getBoardById(id);
@@ -197,42 +195,35 @@ public class BoardController {
                     .body("You don't have permission to update this board");
         }
         
-        if (body == null) {
-            return ResponseEntity.badRequest().body("Request body is required");
-        }
-        
-        BoardResponseDTO response = boardService.updateBoard(board, body);
+        BoardResponseDTO response = boardService.updateBoard(board, Objects.requireNonNull(body));
         return ResponseEntity.ok(response);
     }
 
     @Operation(summary = "Delete Board", description = "Delete a board by its ID")
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Board deleted successfully"),
+        @ApiResponse(responseCode = "204", description = "Board deleted successfully"),
         @ApiResponse(responseCode = "404", description = "Board not found"),
         @ApiResponse(responseCode = "403", description = "Forbidden - Board belongs to another user"),
         @ApiResponse(responseCode = "401", description = "Unauthorized - Invalid or missing token")
     })
     @DeleteMapping("/{id}")
-    public ResponseEntity<Object> deleteBoard(
+    public ResponseEntity<Void> deleteBoard(
             @Parameter(description = "Board ID", required = true) @PathVariable @NonNull String id,
             @AuthenticationPrincipal User user) {
         
         Optional<Board> boardOpt = boardService.getBoardById(id);
         
         if (boardOpt.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body("Board not found");
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
         }
         
         Board board = boardOpt.get();
         
-        // Check if board belongs to the authenticated user
         if (!board.getOwner().getId().equals(user.getId())) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body("You don't have permission to delete this board");
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
         
         boardService.deleteBoard(id);
-        return ResponseEntity.ok("Board and all associated lists and cards deleted successfully");
+        return ResponseEntity.noContent().build();
     }
 }

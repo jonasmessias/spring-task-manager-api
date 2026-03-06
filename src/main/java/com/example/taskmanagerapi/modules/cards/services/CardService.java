@@ -11,6 +11,7 @@ import com.example.taskmanagerapi.modules.cards.domain.Card;
 import com.example.taskmanagerapi.modules.cards.domain.CardStatus;
 import com.example.taskmanagerapi.modules.cards.dto.CardResponseDTO;
 import com.example.taskmanagerapi.modules.cards.dto.CreateCardDTO;
+import com.example.taskmanagerapi.modules.cards.dto.MoveCardDTO;
 import com.example.taskmanagerapi.modules.cards.dto.UpdateCardDTO;
 import com.example.taskmanagerapi.modules.cards.repositories.CardRepository;
 import com.example.taskmanagerapi.modules.lists.domain.BoardList;
@@ -36,9 +37,16 @@ public class CardService {
         card.setName(dto.name());
         card.setDescription(dto.description());
         card.setStatus(dto.status() != null ? dto.status() : CardStatus.ACTIVE);
-        card.setPosition(dto.position());
         card.setList(list);
         card.setCreatedAt(LocalDateTime.now());
+
+        // Auto-append at end if no position given
+        if (dto.position() != null) {
+            card.setPosition(dto.position());
+        } else {
+            Integer maxPosition = cardRepository.findMaxPositionByList(list);
+            card.setPosition(maxPosition == null ? 0 : maxPosition + 1);
+        }
         
         Card savedCard = cardRepository.save(card);
         return new CardResponseDTO(savedCard);
@@ -65,7 +73,7 @@ public class CardService {
     }
     
     /**
-     * Update a card
+     * Update a card's fields (name, description, status, position within same list)
      */
     @Transactional
     public CardResponseDTO updateCard(Card card, UpdateCardDTO dto) {
@@ -85,6 +93,25 @@ public class CardService {
         
         Card updatedCard = cardRepository.save(card);
         return new CardResponseDTO(updatedCard);
+    }
+
+    /**
+     * Move a card to a different list (or reposition within the same list)
+     */
+    @Transactional
+    public CardResponseDTO moveCard(Card card, BoardList targetList, MoveCardDTO dto) {
+        card.setList(targetList);
+
+        if (dto.position() != null) {
+            card.setPosition(dto.position());
+        } else {
+            Integer maxPosition = cardRepository.findMaxPositionByList(targetList);
+            card.setPosition(maxPosition == null ? 0 : maxPosition + 1);
+        }
+
+        card.setUpdatedAt(LocalDateTime.now());
+        Card movedCard = cardRepository.save(card);
+        return new CardResponseDTO(movedCard);
     }
     
     /**

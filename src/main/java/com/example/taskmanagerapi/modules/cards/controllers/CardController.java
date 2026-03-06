@@ -1,6 +1,7 @@
 package com.example.taskmanagerapi.modules.cards.controllers;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
 import org.springframework.http.HttpStatus;
@@ -9,6 +10,7 @@ import org.springframework.lang.NonNull;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -20,6 +22,7 @@ import com.example.taskmanagerapi.modules.auth.domain.User;
 import com.example.taskmanagerapi.modules.cards.domain.Card;
 import com.example.taskmanagerapi.modules.cards.dto.CardResponseDTO;
 import com.example.taskmanagerapi.modules.cards.dto.CreateCardDTO;
+import com.example.taskmanagerapi.modules.cards.dto.MoveCardDTO;
 import com.example.taskmanagerapi.modules.cards.dto.UpdateCardDTO;
 import com.example.taskmanagerapi.modules.cards.services.CardService;
 import com.example.taskmanagerapi.modules.lists.domain.BoardList;
@@ -33,6 +36,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
 /**
@@ -54,6 +58,7 @@ public class CardController {
     @ApiResponses(value = {
         @ApiResponse(responseCode = "201", description = "Card created successfully",
                 content = @Content(schema = @Schema(implementation = CardResponseDTO.class))),
+        @ApiResponse(responseCode = "400", description = "Invalid request body"),
         @ApiResponse(responseCode = "404", description = "List not found"),
         @ApiResponse(responseCode = "403", description = "Forbidden - Board belongs to another user"),
         @ApiResponse(responseCode = "401", description = "Unauthorized - Invalid or missing token")
@@ -62,7 +67,7 @@ public class CardController {
     public ResponseEntity<Object> createCard(
             @Parameter(description = "Board ID", required = true) @PathVariable @NonNull String boardId,
             @Parameter(description = "List ID", required = true) @PathVariable @NonNull String listId,
-            @RequestBody CreateCardDTO body,
+            @Valid @RequestBody CreateCardDTO body,
             @AuthenticationPrincipal User user) {
         
         // Validate list exists and belongs to board and user
@@ -161,10 +166,11 @@ public class CardController {
         return ResponseEntity.ok(new CardResponseDTO(card));
     }
 
-    @Operation(summary = "Update Card", description = "Update an existing card")
+    @Operation(summary = "Update Card", description = "Update an existing card's name, description, status or position within the same list")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Card updated successfully",
                 content = @Content(schema = @Schema(implementation = CardResponseDTO.class))),
+        @ApiResponse(responseCode = "400", description = "Invalid request body"),
         @ApiResponse(responseCode = "404", description = "Card not found"),
         @ApiResponse(responseCode = "403", description = "Forbidden - Board belongs to another user"),
         @ApiResponse(responseCode = "401", description = "Unauthorized - Invalid or missing token")
@@ -174,7 +180,7 @@ public class CardController {
             @Parameter(description = "Board ID", required = true) @PathVariable @NonNull String boardId,
             @Parameter(description = "List ID", required = true) @PathVariable @NonNull String listId,
             @Parameter(description = "Card ID", required = true) @PathVariable @NonNull String cardId,
-            @RequestBody UpdateCardDTO body,
+            @Valid @RequestBody UpdateCardDTO body,
             @AuthenticationPrincipal User user) {
         
         Optional<Card> cardOpt = cardService.getCardById(cardId);
@@ -203,15 +209,73 @@ public class CardController {
         return ResponseEntity.ok(response);
     }
 
+    @Operation(summary = "Move Card", description = "Move a card to a different list (drag-and-drop). Optionally set the position in the target list.")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Card moved successfully",
+                content = @Content(schema = @Schema(implementation = CardResponseDTO.class))),
+        @ApiResponse(responseCode = "400", description = "Invalid request or target list does not belong to this board"),
+        @ApiResponse(responseCode = "404", description = "Card or target list not found"),
+        @ApiResponse(responseCode = "403", description = "Forbidden - Board belongs to another user"),
+        @ApiResponse(responseCode = "401", description = "Unauthorized - Invalid or missing token")
+    })
+    @PatchMapping("/{cardId}/move")
+    public ResponseEntity<Object> moveCard(
+            @Parameter(description = "Board ID", required = true) @PathVariable @NonNull String boardId,
+            @Parameter(description = "Current list ID", required = true) @PathVariable @NonNull String listId,
+            @Parameter(description = "Card ID", required = true) @PathVariable @NonNull String cardId,
+            @Valid @RequestBody MoveCardDTO body,
+            @AuthenticationPrincipal User user) {
+
+        // Validate the card exists and belongs to the current list/board
+        Optional<Card> cardOpt = cardService.getCardById(cardId);
+        if (cardOpt.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Card not found");
+        }
+
+        Card card = cardOpt.get();
+
+        if (!card.getList().getId().equals(listId)) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body("Card does not belong to this list");
+        }
+
+        if (!card.getList().getBoard().getId().equals(boardId)) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body("List does not belong to this board");
+        }
+
+        if (!card.getList().getBoard().getOwner().getId().equals(user.getId())) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body("You don't have permission to move this card");
+        }
+
+        // Validate the target list exists and belongs to the same board
+        String targetListId = Objects.requireNonNull(body.targetListId(), "targetListId is required");
+        Optional<BoardList> targetListOpt = listService.getListById(targetListId);
+        if (targetListOpt.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Target list not found");
+        }
+
+        BoardList targetList = targetListOpt.get();
+
+        if (!targetList.getBoard().getId().equals(boardId)) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body("Target list does not belong to this board");
+        }
+
+        CardResponseDTO response = cardService.moveCard(card, targetList, body);
+        return ResponseEntity.ok(response);
+    }
+
     @Operation(summary = "Delete Card", description = "Delete a card by its ID")
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Card deleted successfully"),
+        @ApiResponse(responseCode = "204", description = "Card deleted successfully"),
         @ApiResponse(responseCode = "404", description = "Card not found"),
         @ApiResponse(responseCode = "403", description = "Forbidden - Board belongs to another user"),
         @ApiResponse(responseCode = "401", description = "Unauthorized - Invalid or missing token")
     })
     @DeleteMapping("/{cardId}")
-    public ResponseEntity<Object> deleteCard(
+    public ResponseEntity<Void> deleteCard(
             @Parameter(description = "Board ID", required = true) @PathVariable @NonNull String boardId,
             @Parameter(description = "List ID", required = true) @PathVariable @NonNull String listId,
             @Parameter(description = "Card ID", required = true) @PathVariable @NonNull String cardId,
@@ -219,27 +283,24 @@ public class CardController {
         
         Optional<Card> cardOpt = cardService.getCardById(cardId);
         if (cardOpt.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Card not found");
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
         }
         
         Card card = cardOpt.get();
         
         if (!card.getList().getId().equals(listId)) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body("Card does not belong to this list");
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         }
         
         if (!card.getList().getBoard().getId().equals(boardId)) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body("List does not belong to this board");
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         }
         
         if (!card.getList().getBoard().getOwner().getId().equals(user.getId())) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body("You don't have permission to delete this card");
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
         
         cardService.deleteCard(cardId);
-        return ResponseEntity.ok("Card deleted successfully");
+        return ResponseEntity.noContent().build();
     }
 }
