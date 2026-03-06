@@ -1,8 +1,7 @@
 package com.example.taskmanagerapi.modules.auth.domain;
 
-import java.io.Serializable;
+import java.time.LocalDateTime;
 
-import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -14,30 +13,20 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Entity
-@Table(name = "users")
+@Table(name = "email_verification_tokens")
 @Getter
 @Setter
-@AllArgsConstructor
 @NoArgsConstructor
-public class User implements Serializable {
-    
-    private static final long serialVersionUID = 1L;
-    
+@AllArgsConstructor
+public class EmailVerificationToken {
+
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private String id;
-    
-    private String name;
-    
-    @Column(unique = true, nullable = false)
-    private String username;
-    
-    @Column(unique = true, nullable = false)
-    private String email;
-    
-    @Column(nullable = false)
-    private String password;
 
-    @Column(nullable = false)
-    private boolean emailVerified = false;
+    private String token;
+
+    private String email;
+
+    private LocalDateTime expirationDate;
 }
