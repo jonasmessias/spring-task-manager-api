@@ -93,4 +93,17 @@ public class AuditLogService {
             timestamp
         );
     }
+
+    /**
+     * Log email verification event
+     */
+    public void logEmailVerification(User user, String ipAddress) {
+        String timestamp = LocalDateTime.now().format(formatter);
+        logger.info("[EMAIL_VERIFIED] User: {} | Email: {} | IP: {} | Time: {}", 
+            user.getName(), 
+            user.getEmail(), 
+            ipAddress != null ? ipAddress : "unknown",
+            timestamp
+        );
+    }
 }
