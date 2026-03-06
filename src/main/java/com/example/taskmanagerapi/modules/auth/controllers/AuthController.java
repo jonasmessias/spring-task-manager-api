@@ -41,6 +41,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
 @RestController
@@ -122,7 +123,7 @@ public class AuthController {
     })
     @PostMapping("/register")
     public ResponseEntity<Object> register(
-            @RequestBody RegisterRequestDTO body,
+            @Valid @RequestBody RegisterRequestDTO body,
             @RequestHeader(value = "User-Agent", required = false) String userAgent,
             HttpServletRequest request) {
 

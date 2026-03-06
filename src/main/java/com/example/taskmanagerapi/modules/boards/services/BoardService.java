@@ -1,7 +1,8 @@
-package com.example.taskmanagerapi.modules.boards.services;
+﻿package com.example.taskmanagerapi.modules.boards.services;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -23,9 +24,6 @@ import lombok.RequiredArgsConstructor;
 
 /**
  * BoardService - Business logic for board operations
- * Single Responsibility: Handle business rules for boards
- * Communicates with BoardListService for cascade operations
- * Now integrated with Workspace hierarchy
  */
 @Service
 @RequiredArgsConstructor
@@ -51,34 +49,10 @@ public class BoardService {
     }
 
     /**
-     * Get all boards for a user, ordered by creation date (legacy method)
-     * @deprecated Use getBoardsByWorkspace instead
-     */
-    @Deprecated
-    public List<BoardResponseDTO> getBoardsByUser(@NonNull User user) {
-        return boardRepository.findByOwnerOrderByCreatedAtDesc(user)
-                .stream()
-                .map(BoardResponseDTO::new)
-                .collect(Collectors.toList());
-    }
-
-    /**
      * Get all boards for a workspace, ordered by creation date
      */
     public List<BoardResponseDTO> getBoardsByWorkspace(@NonNull Workspace workspace) {
         return boardRepository.findByWorkspaceOrderByCreatedAtDesc(workspace)
-                .stream()
-                .map(BoardResponseDTO::new)
-                .collect(Collectors.toList());
-    }
-
-    /**
-     * Get boards by user and type (legacy method)
-     * @deprecated Use getBoardsByWorkspaceAndType instead
-     */
-    @Deprecated
-    public List<BoardResponseDTO> getBoardsByUserAndType(@NonNull User user, @NonNull BoardType type) {
-        return boardRepository.findByOwnerAndType(user, type)
                 .stream()
                 .map(BoardResponseDTO::new)
                 .collect(Collectors.toList());
@@ -109,34 +83,26 @@ public class BoardService {
         if (dto.name() != null && !dto.name().isBlank()) {
             board.setName(dto.name());
         }
-        
         if (dto.type() != null) {
             board.setType(dto.type());
         }
-        
         if (dto.description() != null) {
             board.setDescription(dto.description());
         }
-        
         board.setUpdatedAt(LocalDateTime.now());
         Board updatedBoard = boardRepository.save(board);
         return new BoardResponseDTO(updatedBoard);
     }
 
     /**
-     * Delete a board by ID
-     * Cascades deletion to all lists and cards
+     * Delete a board by ID â€” cascades to all lists and cards
      */
     @Transactional
     public void deleteBoard(@NonNull String id) {
         Optional<Board> boardOpt = boardRepository.findById(id);
         if (boardOpt.isPresent()) {
-            Board board = boardOpt.get();
-            // Delete all lists in the board (which will cascade to cards)
-            if (board != null) {
-                listService.deleteAllByBoard(board);
-            }
-            // Then delete the board
+            Board board = Objects.requireNonNull(boardOpt.get());
+            listService.deleteAllByBoard(board);
             boardRepository.deleteById(id);
         }
     }

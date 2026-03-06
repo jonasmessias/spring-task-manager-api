@@ -1,6 +1,6 @@
 # Task Manager API
 
-Java · Spring Boot · JWT · Redis · H2 · Docker
+Java · Spring Boot · JWT · Redis · PostgreSQL · Docker
 
 ---
 
@@ -23,13 +23,16 @@ After running, the following services will be available:
 | ---------- | ---- | ------------------------------------- |
 | API        | 8080 | http://localhost:8080                 |
 | Swagger UI | 8080 | http://localhost:8080/swagger-ui.html |
-| H2 Console | 8080 | http://localhost:8080/h2-console      |
+| PostgreSQL | 5432 | localhost:5432                        |
 | Redis      | 6379 | localhost:6379                        |
 
-**H2 Console connection:**
-- JDBC URL: `jdbc:h2:mem:testdb`
+**PostgreSQL connection:**
+
+- Host: `localhost`
+- Port: `5432`
+- Database: `taskmanager`
 - Username: `admin`
-- Password: _(empty)_
+- Password: `admin`
 
 **3 - Configure email sending**
 
@@ -50,6 +53,7 @@ https://myaccount.google.com/apppasswords
 Open Swagger UI at http://localhost:8080/swagger-ui.html or use any HTTP client.
 
 All protected endpoints require the header:
+
 ```
 Authorization: Bearer <access_token>
 ```
@@ -63,6 +67,7 @@ Authorization: Bearer <access_token>
 ```
 POST > http://localhost:8080/auth/register
 ```
+
 ```json
 {
   "name": "John Doe",
@@ -80,6 +85,7 @@ A verification email will be sent to the provided address.
 ```
 POST > http://localhost:8080/auth/verify-email
 ```
+
 ```json
 { "token": "<token_from_email>" }
 ```
@@ -89,13 +95,19 @@ POST > http://localhost:8080/auth/verify-email
 ```
 POST > http://localhost:8080/auth/login
 ```
+
 ```json
 { "emailOrUsername": "johndoe", "password": "secret123" }
 ```
 
 Response:
+
 ```json
-{ "name": "John Doe", "token": "<access_token>", "refreshToken": "<refresh_token>" }
+{
+  "name": "John Doe",
+  "accessToken": "<access_token>",
+  "refreshToken": "<refresh_token>"
+}
 ```
 
 Access token expires in **4 hours**. Use the refresh token to get a new one:
@@ -103,6 +115,7 @@ Access token expires in **4 hours**. Use the refresh token to get a new one:
 ```
 POST > http://localhost:8080/auth/refresh
 ```
+
 ```json
 { "refreshToken": "<refresh_token>" }
 ```
@@ -113,25 +126,26 @@ POST > http://localhost:8080/auth/refresh
 
 ### Auth
 
-| Method | Path                      | Auth | Description                        |
-| ------ | ------------------------- | ---- | ---------------------------------- |
-| POST   | /auth/register            | No   | Register new account               |
-| POST   | /auth/verify-email        | No   | Verify email with token from inbox |
-| POST   | /auth/resend-verification | No   | Resend verification email          |
-| POST   | /auth/login               | No   | Login, returns access + refresh token |
-| POST   | /auth/refresh             | No   | Get new access token               |
-| POST   | /auth/logout              | Yes  | Invalidate current session         |
-| POST   | /auth/logout-all          | Yes  | Invalidate all sessions            |
-| POST   | /auth/forgot-password     | No   | Send password reset email          |
-| POST   | /auth/reset-password      | No   | Reset password with token          |
+| Method | Path                      | Auth | Description                                                |
+| ------ | ------------------------- | ---- | ---------------------------------------------------------- |
+| POST   | /auth/register            | No   | Register new account                                       |
+| POST   | /auth/verify-email        | No   | Verify email with token from inbox                         |
+| POST   | /auth/resend-verification | No   | Resend verification email                                  |
+| POST   | /auth/login               | No   | Login, returns access + refresh token                      |
+| POST   | /auth/refresh             | No   | Get new access token                                       |
+| POST   | /auth/logout              | Yes  | Invalidate current session (requires refreshToken in body) |
+| POST   | /auth/logout-all          | Yes  | Invalidate all sessions                                    |
+| POST   | /auth/forgot-password     | No   | Send password reset email                                  |
+| POST   | /auth/reset-password      | No   | Reset password with token                                  |
 
 ### Users
 
-| Method | Path           | Auth | Description      |
-| ------ | -------------- | ---- | ---------------- |
-| GET    | /users/profile | Yes  | Get user profile |
-| PUT    | /users/profile | Yes  | Update profile   |
-| DELETE | /users/profile | Yes  | Delete account   |
+| Method | Path        | Auth | Description                     |
+| ------ | ----------- | ---- | ------------------------------- |
+| GET    | /users/me   | Yes  | Get current authenticated user  |
+| PUT    | /users/me   | Yes  | Update profile (name, username) |
+| DELETE | /users/me   | Yes  | Delete own account              |
+| GET    | /users/{id} | Yes  | Get user by ID                  |
 
 ### Workspaces
 
@@ -165,13 +179,14 @@ POST > http://localhost:8080/auth/refresh
 
 ### Cards
 
-| Method | Path                                            | Auth | Description   |
-| ------ | ----------------------------------------------- | ---- | ------------- |
-| POST   | /boards/{boardId}/lists/{listId}/cards          | Yes  | Create card   |
-| GET    | /boards/{boardId}/lists/{listId}/cards          | Yes  | Get all cards |
-| GET    | /boards/{boardId}/lists/{listId}/cards/{cardId} | Yes  | Get card      |
-| PUT    | /boards/{boardId}/lists/{listId}/cards/{cardId} | Yes  | Update card   |
-| DELETE | /boards/{boardId}/lists/{listId}/cards/{cardId} | Yes  | Delete card   |
+| Method | Path                                                 | Auth | Description                   |
+| ------ | ---------------------------------------------------- | ---- | ----------------------------- |
+| POST   | /boards/{boardId}/lists/{listId}/cards               | Yes  | Create card                   |
+| GET    | /boards/{boardId}/lists/{listId}/cards               | Yes  | Get all cards                 |
+| GET    | /boards/{boardId}/lists/{listId}/cards/{cardId}      | Yes  | Get card                      |
+| PUT    | /boards/{boardId}/lists/{listId}/cards/{cardId}      | Yes  | Update card                   |
+| PATCH  | /boards/{boardId}/lists/{listId}/cards/{cardId}/move | Yes  | Move card to a different list |
+| DELETE | /boards/{boardId}/lists/{listId}/cards/{cardId}      | Yes  | Delete card                   |
 
 Card status values: `ACTIVE`, `ARCHIVED`, `COMPLETED`.
 
@@ -185,6 +200,7 @@ Card status values: `ACTIVE`, `ARCHIVED`, `COMPLETED`.
 POST > http://localhost:8080/workspaces
 Authorization: Bearer <access_token>
 ```
+
 ```json
 { "name": "My Workspace" }
 ```
@@ -195,6 +211,7 @@ Authorization: Bearer <access_token>
 POST > http://localhost:8080/boards?workspaceId=<workspace_id>
 Authorization: Bearer <access_token>
 ```
+
 ```json
 { "name": "My Project", "type": "BOARD", "description": "Main project board" }
 ```
@@ -205,6 +222,7 @@ Authorization: Bearer <access_token>
 POST > http://localhost:8080/boards/<board_id>/lists
 Authorization: Bearer <access_token>
 ```
+
 ```json
 { "name": "To Do" }
 ```
@@ -215,6 +233,7 @@ Authorization: Bearer <access_token>
 POST > http://localhost:8080/boards/<board_id>/lists/<list_id>/cards
 Authorization: Bearer <access_token>
 ```
+
 ```json
 { "name": "Task 1", "description": "Task description", "status": "ACTIVE" }
 ```
@@ -224,17 +243,18 @@ Authorization: Bearer <access_token>
 ## Error responses
 
 All errors follow the format:
+
 ```json
 { "code": "ERROR_CODE", "message": "Human readable message." }
 ```
 
-| Code                   | Status | Description                      |
-| ---------------------- | ------ | -------------------------------- |
-| EMAIL_NOT_VERIFIED     | 403    | Account pending verification     |
-| INVALID_CREDENTIALS    | 400    | Wrong email/username or password |
-| EMAIL_NOT_FOUND        | 400    | No account with that email       |
-| EMAIL_ALREADY_VERIFIED | 400    | Account already verified         |
+| Code                   | Status | Description                        |
+| ---------------------- | ------ | ---------------------------------- |
+| EMAIL_NOT_VERIFIED     | 403    | Account pending email verification |
+| INVALID_CREDENTIALS    | 400    | Wrong email/username or password   |
+| EMAIL_NOT_FOUND        | 400    | No account with that email         |
+| EMAIL_ALREADY_VERIFIED | 400    | Account already verified           |
 
 ---
 
-*Last updated: March 6, 2026*
+_Last updated: March 6, 2026_

@@ -1,6 +1,7 @@
 package com.example.taskmanagerapi.modules.lists.controllers;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
 import org.springframework.http.HttpStatus;
@@ -33,6 +34,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
 /**
@@ -61,13 +63,9 @@ public class ListController {
     @PostMapping
     public ResponseEntity<Object> createList(
             @Parameter(description = "Board ID", required = true) @PathVariable @NonNull String boardId,
-            @RequestBody CreateListDTO body,
+            @Valid @RequestBody CreateListDTO body,
             @AuthenticationPrincipal User user) {
-        
-        if (body == null) {
-            return ResponseEntity.badRequest().body("Request body is required");
-        }
-        
+
         // Validate board exists and belongs to user
         Optional<Board> boardOpt = boardService.getBoardById(boardId);
         if (boardOpt.isEmpty()) {
@@ -81,7 +79,8 @@ public class ListController {
                     .body("You don't have permission to add lists to this board");
         }
         
-        ListResponseDTO response = listService.createList(body, board);
+        ListResponseDTO response = listService.createList(
+                Objects.requireNonNull(body), board);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
@@ -159,7 +158,7 @@ public class ListController {
     public ResponseEntity<Object> updateList(
             @Parameter(description = "Board ID", required = true) @PathVariable @NonNull String boardId,
             @Parameter(description = "List ID", required = true) @PathVariable @NonNull String listId,
-            @RequestBody UpdateListDTO body,
+            @Valid @RequestBody UpdateListDTO body,
             @AuthenticationPrincipal User user) {
         
         Optional<BoardList> listOpt = listService.getListById(listId);
@@ -179,45 +178,39 @@ public class ListController {
                     .body("You don't have permission to update this list");
         }
         
-        if (body == null) {
-            return ResponseEntity.badRequest().body("Request body is required");
-        }
-        
-        ListResponseDTO response = listService.updateList(list, body);
+        ListResponseDTO response = listService.updateList(list, Objects.requireNonNull(body));
         return ResponseEntity.ok(response);
     }
 
     @Operation(summary = "Delete List", description = "Delete a list by its ID (cascades to all cards)")
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "List deleted successfully"),
+        @ApiResponse(responseCode = "204", description = "List deleted successfully"),
         @ApiResponse(responseCode = "404", description = "List not found"),
         @ApiResponse(responseCode = "403", description = "Forbidden - Board belongs to another user"),
         @ApiResponse(responseCode = "401", description = "Unauthorized - Invalid or missing token")
     })
     @DeleteMapping("/{listId}")
-    public ResponseEntity<Object> deleteList(
+    public ResponseEntity<Void> deleteList(
             @Parameter(description = "Board ID", required = true) @PathVariable @NonNull String boardId,
             @Parameter(description = "List ID", required = true) @PathVariable @NonNull String listId,
             @AuthenticationPrincipal User user) {
         
         Optional<BoardList> listOpt = listService.getListById(listId);
         if (listOpt.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("List not found");
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
         }
         
         BoardList list = listOpt.get();
         
         if (!list.getBoard().getId().equals(boardId)) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body("List does not belong to this board");
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         }
         
         if (!list.getBoard().getOwner().getId().equals(user.getId())) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body("You don't have permission to delete this list");
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
         
         listService.deleteList(listId);
-        return ResponseEntity.ok("List and all associated cards deleted successfully");
+        return ResponseEntity.noContent().build();
     }
 }
