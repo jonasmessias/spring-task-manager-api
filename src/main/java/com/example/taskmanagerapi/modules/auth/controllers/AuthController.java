@@ -15,15 +15,19 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.example.taskmanagerapi.infra.security.TokenService;
+import com.example.taskmanagerapi.modules.auth.domain.EmailVerificationToken;
 import com.example.taskmanagerapi.modules.auth.domain.PasswordResetToken;
 import com.example.taskmanagerapi.modules.auth.domain.RefreshToken;
 import com.example.taskmanagerapi.modules.auth.domain.User;
 import com.example.taskmanagerapi.modules.auth.dto.AuthResponseDTO;
+import com.example.taskmanagerapi.modules.auth.dto.ErrorResponseDTO;
 import com.example.taskmanagerapi.modules.auth.dto.ForgotPasswordRequestDTO;
 import com.example.taskmanagerapi.modules.auth.dto.LoginRequestDTO;
 import com.example.taskmanagerapi.modules.auth.dto.RefreshTokenRequestDTO;
 import com.example.taskmanagerapi.modules.auth.dto.RegisterRequestDTO;
 import com.example.taskmanagerapi.modules.auth.dto.ResetPasswordDTO;
+import com.example.taskmanagerapi.modules.auth.dto.VerifyEmailRequestDTO;
+import com.example.taskmanagerapi.modules.auth.repositories.EmailVerificationRepository;
 import com.example.taskmanagerapi.modules.auth.repositories.PasswordResetRepository;
 import com.example.taskmanagerapi.modules.auth.repositories.UserRepository;
 import com.example.taskmanagerapi.modules.auth.services.AuditLogService;
@@ -51,6 +55,7 @@ public class AuthController {
     private final AuditLogService auditLogService;
     private final PasswordResetRepository passwordResetTokenRepository;
     private final EmailService emailService;
+    private final EmailVerificationRepository emailVerificationRepository;
     
     @Value("${app.frontend.url}")
     private String frontendUrl;
@@ -79,7 +84,14 @@ public class AuthController {
         User user = this.repository.findByEmail(body.emailOrUsername())
                 .or(() -> this.repository.findByUsername(body.emailOrUsername()))
                 .orElseThrow(() -> new RuntimeException("User not found"));
-        
+
+        if (!user.isEmailVerified()) {
+            return ResponseEntity.status(403).body(new ErrorResponseDTO(
+                "EMAIL_NOT_VERIFIED",
+                "Email not verified. Please check your inbox and verify your account."
+            ));
+        }
+
         if(passwordEncoder.matches(body.password(), user.getPassword())){
             String accessToken = tokenService.generateToken(user);
             String clientIp = getClientIp(request);
@@ -96,7 +108,10 @@ public class AuthController {
                 refreshToken.getToken()
             ));
         }
-        return ResponseEntity.badRequest().body("Invalid credentials");
+        return ResponseEntity.badRequest().body(new ErrorResponseDTO(
+            "INVALID_CREDENTIALS",
+            "Invalid credentials."
+        ));
     }
 
     @Operation(summary = "Register", description = "Create a new user account and return tokens")
@@ -130,22 +145,34 @@ public class AuthController {
         newUser.setEmail(body.email());
         newUser.setName(body.name());
         newUser.setUsername(body.username());
+        newUser.setEmailVerified(false);
         this.repository.save(newUser);
 
-        String accessToken = tokenService.generateToken(newUser);
-        String clientIp = getClientIp(request);
-        
-        // Create refresh token
-        RefreshToken refreshToken = refreshTokenService.createRefreshToken(newUser, clientIp, userAgent);
-        
+        // Generate email verification token (expires in 24 hours)
+        String verificationToken = UUID.randomUUID().toString();
+        emailVerificationRepository.deleteByEmail(body.email());
+
+        EmailVerificationToken emailToken = new EmailVerificationToken();
+        emailToken.setEmail(body.email());
+        emailToken.setToken(verificationToken);
+        emailToken.setExpirationDate(LocalDateTime.now().plusHours(24));
+        emailVerificationRepository.save(emailToken);
+
+        String verificationLink = frontendUrl + "/verify-email?token=" + verificationToken;
+        String message = "Olá, " + newUser.getName() + "!\n\n" +
+                "Obrigado por se cadastrar no Task Manager!\n\n" +
+                "Clique no link abaixo para verificar seu e-mail e ativar sua conta:\n" +
+                verificationLink + "\n\n" +
+                "O link expira em 24 horas.\n\n" +
+                "Se você não criou esta conta, ignore este e-mail.\n\nTask Manager";
+
+        emailService.sendEmail(body.email(), "Verifique seu e-mail - Task Manager", message);
+
         // Audit log
+        String clientIp = getClientIp(request);
         auditLogService.logRegistration(newUser, clientIp);
-        
-        return ResponseEntity.ok(new AuthResponseDTO(
-            newUser.getName(), 
-            accessToken, 
-            refreshToken.getToken()
-        ));
+
+        return ResponseEntity.ok("Registration successful! Please check your email to verify your account.");
     }
 
     @Operation(summary = "Refresh Token", description = "Get a new access token using refresh token")
@@ -223,6 +250,95 @@ public class AuthController {
         auditLogService.logLogoutAll(user, getClientIp(request));
         
         return ResponseEntity.ok("Logged out successfully from all devices");
+    }
+
+    @Operation(summary = "Verify Email", description = "Verify user email address using the token sent by email")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Email verified successfully"),
+        @ApiResponse(responseCode = "400", description = "Invalid or expired token")
+    })
+    @PostMapping("/verify-email")
+    public ResponseEntity<Object> verifyEmail(
+            @RequestBody VerifyEmailRequestDTO body,
+            HttpServletRequest request) {
+
+        Optional<EmailVerificationToken> tokenOpt = emailVerificationRepository.findByToken(body.token());
+
+        if (tokenOpt.isEmpty()) {
+            return ResponseEntity.badRequest().body("Invalid verification token.");
+        }
+
+        EmailVerificationToken verificationToken = tokenOpt.get();
+
+        if (verificationToken.getExpirationDate().isBefore(LocalDateTime.now())) {
+            emailVerificationRepository.delete(verificationToken);
+            return ResponseEntity.badRequest().body("Verification token has expired. Please register again.");
+        }
+
+        Optional<User> userOpt = repository.findByEmail(verificationToken.getEmail());
+
+        if (userOpt.isEmpty()) {
+            return ResponseEntity.badRequest().body("User not found.");
+        }
+
+        User user = userOpt.get();
+        user.setEmailVerified(true);
+        repository.save(user);
+
+        emailVerificationRepository.delete(verificationToken);
+
+        auditLogService.logEmailVerification(user, getClientIp(request));
+
+        return ResponseEntity.ok("Email verified successfully! You can now log in.");
+    }
+
+    @Operation(summary = "Resend Verification Email", description = "Resend the email verification link to the user")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Verification email resent"),
+        @ApiResponse(responseCode = "400", description = "Email not found or already verified")
+    })
+    @PostMapping("/resend-verification")
+    public ResponseEntity<Object> resendVerification(@RequestBody ForgotPasswordRequestDTO body) {
+
+        Optional<User> userOpt = this.repository.findByEmail(body.email());
+
+        if (userOpt.isEmpty()) {
+            return ResponseEntity.badRequest().body(new ErrorResponseDTO(
+                "EMAIL_NOT_FOUND",
+                "E-mail not found."
+            ));
+        }
+
+        User user = userOpt.get();
+
+        if (user.isEmailVerified()) {
+            return ResponseEntity.badRequest().body(new ErrorResponseDTO(
+                "EMAIL_ALREADY_VERIFIED",
+                "This email is already verified. You can log in."
+            ));
+        }
+
+        // Invalidate old token and generate a new one
+        emailVerificationRepository.deleteByEmail(body.email());
+
+        String verificationToken = UUID.randomUUID().toString();
+        EmailVerificationToken emailToken = new EmailVerificationToken();
+        emailToken.setEmail(body.email());
+        emailToken.setToken(verificationToken);
+        emailToken.setExpirationDate(LocalDateTime.now().plusHours(24));
+        emailVerificationRepository.save(emailToken);
+
+        String verificationLink = frontendUrl + "/verify-email?token=" + verificationToken;
+        String message = "Olá, " + user.getName() + "!\n\n" +
+                "Você solicitou um novo link de verificação.\n\n" +
+                "Clique no link abaixo para verificar seu e-mail e ativar sua conta:\n" +
+                verificationLink + "\n\n" +
+                "O link expira em 24 horas.\n\n" +
+                "Se você não solicitou isso, ignore este e-mail.\n\nTask Manager";
+
+        emailService.sendEmail(body.email(), "Novo link de verificação - Task Manager", message);
+
+        return ResponseEntity.ok("Verification email resent to: " + body.email());
     }
 
     @Operation(summary = "Forgot Password", description = "Send password reset email to user")
