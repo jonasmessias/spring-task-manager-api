@@ -20,6 +20,8 @@ public class CustomUserDetailsService implements UserDetailsService {
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
         User user = this.repository.findByEmail(username).orElseThrow(() -> new UsernameNotFoundException("User not found"));
-        return new org.springframework.security.core.userdetails.User(user.getEmail(), user.getPassword(), new ArrayList<>());
+        // OAuth users have no password — use empty string so Spring Security doesn't NPE
+        String password = user.getPassword() != null ? user.getPassword() : "";
+        return new org.springframework.security.core.userdetails.User(user.getEmail(), password, new ArrayList<>());
     }
 }

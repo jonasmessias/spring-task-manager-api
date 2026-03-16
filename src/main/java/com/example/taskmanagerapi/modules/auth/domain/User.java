@@ -36,9 +36,16 @@ public class User implements Serializable {
     @Column(unique = true, nullable = false)
     private String email;
     
-    @Column(nullable = false)
+    // Nullable for OAuth users (they don't have a password)
+    @Column(nullable = true)
     private String password;
 
     @Column(nullable = false)
     private boolean emailVerified = false;
+
+    /**
+     * Authentication provider: "local" or "google"
+     */
+    @Column(nullable = false)
+    private String provider = "local";
 }

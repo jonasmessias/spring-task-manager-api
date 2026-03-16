@@ -22,6 +22,7 @@ import com.example.taskmanagerapi.modules.auth.domain.User;
 import com.example.taskmanagerapi.modules.auth.dto.AuthResponseDTO;
 import com.example.taskmanagerapi.modules.auth.dto.ErrorResponseDTO;
 import com.example.taskmanagerapi.modules.auth.dto.ForgotPasswordRequestDTO;
+import com.example.taskmanagerapi.modules.auth.dto.GoogleTokenRequestDTO;
 import com.example.taskmanagerapi.modules.auth.dto.LoginRequestDTO;
 import com.example.taskmanagerapi.modules.auth.dto.MessageResponseDTO;
 import com.example.taskmanagerapi.modules.auth.dto.RefreshTokenRequestDTO;
@@ -33,6 +34,7 @@ import com.example.taskmanagerapi.modules.auth.repositories.PasswordResetReposit
 import com.example.taskmanagerapi.modules.auth.repositories.UserRepository;
 import com.example.taskmanagerapi.modules.auth.services.AuditLogService;
 import com.example.taskmanagerapi.modules.auth.services.EmailService;
+import com.example.taskmanagerapi.modules.auth.services.GoogleAuthService;
 import com.example.taskmanagerapi.modules.auth.services.RefreshTokenService;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -58,7 +60,8 @@ public class AuthController {
     private final PasswordResetRepository passwordResetTokenRepository;
     private final EmailService emailService;
     private final EmailVerificationRepository emailVerificationRepository;
-    
+    private final GoogleAuthService googleAuthService;
+
     @Value("${app.frontend.url}")
     private String frontendUrl;
     
@@ -120,6 +123,33 @@ public class AuthController {
             accessToken, 
             refreshToken.getToken()
         ));
+    }
+
+    @Operation(summary = "Google Login / Register",
+            description = "Authenticate or create an account using a Google ID token obtained from Google Sign-In on the frontend.")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Authenticated successfully",
+                content = @Content(schema = @Schema(implementation = AuthResponseDTO.class))),
+        @ApiResponse(responseCode = "401", description = "Invalid or expired Google token — `INVALID_GOOGLE_TOKEN`",
+                content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class)))
+    })
+    @PostMapping("/google")
+    public ResponseEntity<Object> googleLogin(
+            @Valid @RequestBody GoogleTokenRequestDTO body,
+            @RequestHeader(value = "User-Agent", required = false) String userAgent,
+            HttpServletRequest request) {
+        try {
+            User user = googleAuthService.verifyAndGetUser(body.idToken());
+            String accessToken = tokenService.generateToken(user);
+            String clientIp = getClientIp(request);
+            RefreshToken refreshToken = refreshTokenService.createRefreshToken(user, clientIp, userAgent);
+            auditLogService.logLogin(user, clientIp, userAgent);
+            return ResponseEntity.ok(new AuthResponseDTO(user.getName(), accessToken, refreshToken.getToken()));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(401).body(new ErrorResponseDTO(
+                "INVALID_GOOGLE_TOKEN", "Invalid or expired Google token.", 401
+            ));
+        }
     }
 
     @Operation(summary = "Register", description = "Create a new user account. Sends a verification email on success.")

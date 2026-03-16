@@ -7,6 +7,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.example.taskmanagerapi.modules.auth.domain.User;
 import com.example.taskmanagerapi.modules.auth.repositories.UserRepository;
+import com.example.taskmanagerapi.modules.auth.services.EmailService;
 import com.example.taskmanagerapi.modules.workspaces.domain.MemberRole;
 import com.example.taskmanagerapi.modules.workspaces.domain.Workspace;
 import com.example.taskmanagerapi.modules.workspaces.domain.WorkspaceMember;
@@ -21,6 +22,7 @@ public class WorkspaceMemberService {
 
     private final WorkspaceMemberRepository memberRepository;
     private final UserRepository userRepository;
+    private final EmailService emailService;
 
     /**
      * Add the owner as OWNER member when workspace is created
@@ -51,7 +53,22 @@ public class WorkspaceMemberService {
         member.setWorkspace(workspace);
         member.setUser(target);
         member.setRole(MemberRole.MEMBER);
-        return new WorkspaceMemberDTO(memberRepository.save(member));
+        WorkspaceMemberDTO saved = new WorkspaceMemberDTO(memberRepository.save(member));
+
+        // Notify invited user by email
+        try {
+            emailService.sendEmail(
+                target.getEmail(),
+                "Você foi convidado para um workspace - Task Manager",
+                "Olá, " + target.getName() + "!\n\n" +
+                workspace.getOwner().getName() + " convidou você para o workspace \"" + workspace.getName() + "\".\n\n" +
+                "Acesse o Task Manager para começar a colaborar.\n\nTask Manager"
+            );
+        } catch (Exception ignored) {
+            // Email failure should not block the invite
+        }
+
+        return saved;
     }
 
     /**

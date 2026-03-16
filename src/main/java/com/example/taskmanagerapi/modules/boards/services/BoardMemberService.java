@@ -7,6 +7,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.example.taskmanagerapi.modules.auth.domain.User;
 import com.example.taskmanagerapi.modules.auth.repositories.UserRepository;
+import com.example.taskmanagerapi.modules.auth.services.EmailService;
 import com.example.taskmanagerapi.modules.boards.domain.Board;
 import com.example.taskmanagerapi.modules.boards.domain.BoardMember;
 import com.example.taskmanagerapi.modules.boards.dto.BoardMemberDTO;
@@ -23,6 +24,7 @@ public class BoardMemberService {
     private final BoardMemberRepository boardMemberRepository;
     private final WorkspaceMemberRepository workspaceMemberRepository;
     private final UserRepository userRepository;
+    private final EmailService emailService;
 
     /**
      * Add the owner as OWNER member when board is created
@@ -61,7 +63,23 @@ public class BoardMemberService {
         member.setBoard(board);
         member.setUser(target);
         member.setRole(MemberRole.MEMBER);
-        return new BoardMemberDTO(boardMemberRepository.save(member));
+        BoardMemberDTO saved = new BoardMemberDTO(boardMemberRepository.save(member));
+
+        // Notify invited user by email
+        try {
+            emailService.sendEmail(
+                target.getEmail(),
+                "Você foi convidado para um board - Task Manager",
+                "Olá, " + target.getName() + "!\n\n" +
+                board.getOwner().getName() + " convidou você para o board \"" + board.getName() + "\" " +
+                "no workspace \"" + board.getWorkspace().getName() + "\".\n\n" +
+                "Acesse o Task Manager para começar a colaborar.\n\nTask Manager"
+            );
+        } catch (Exception ignored) {
+            // Email failure should not block the invite
+        }
+
+        return saved;
     }
 
     /**
