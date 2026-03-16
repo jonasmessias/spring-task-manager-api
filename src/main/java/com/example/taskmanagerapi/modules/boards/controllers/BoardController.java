@@ -1,7 +1,6 @@
-package com.example.taskmanagerapi.modules.boards.controllers;
+﻿package com.example.taskmanagerapi.modules.boards.controllers;
 
 import java.util.List;
-import java.util.Objects;
 import java.util.Optional;
 
 import org.springframework.http.HttpStatus;
@@ -19,13 +18,16 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.example.taskmanagerapi.modules.auth.domain.User;
+import com.example.taskmanagerapi.modules.auth.dto.ErrorResponseDTO;
 import com.example.taskmanagerapi.modules.boards.domain.Board;
 import com.example.taskmanagerapi.modules.boards.dto.BoardDetailDTO;
 import com.example.taskmanagerapi.modules.boards.dto.BoardResponseDTO;
 import com.example.taskmanagerapi.modules.boards.dto.CreateBoardDTO;
 import com.example.taskmanagerapi.modules.boards.dto.UpdateBoardDTO;
+import com.example.taskmanagerapi.modules.boards.services.BoardMemberService;
 import com.example.taskmanagerapi.modules.boards.services.BoardService;
 import com.example.taskmanagerapi.modules.workspaces.domain.Workspace;
+import com.example.taskmanagerapi.modules.workspaces.services.WorkspaceMemberService;
 import com.example.taskmanagerapi.modules.workspaces.services.WorkspaceService;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -48,99 +50,89 @@ public class BoardController {
     
     private final BoardService boardService;
     private final WorkspaceService workspaceService;
+    private final WorkspaceMemberService workspaceMemberService;
+    private final BoardMemberService boardMemberService;
 
-    @Operation(summary = "Create Board", description = "Create a new board within a workspace")
+    @Operation(summary = "Create Board", description = "Create a new board within a workspace. Any workspace member can create boards.")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "201", description = "Board created successfully",
                 content = @Content(schema = @Schema(implementation = BoardResponseDTO.class))),
-        @ApiResponse(responseCode = "400", description = "Invalid request or workspace not found"),
-        @ApiResponse(responseCode = "401", description = "Unauthorized - Invalid or missing token"),
-        @ApiResponse(responseCode = "403", description = "Forbidden - Workspace belongs to another user")
+        @ApiResponse(responseCode = "404", description = "Workspace not found â€” `WORKSPACE_NOT_FOUND`",
+                content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class))),
+        @ApiResponse(responseCode = "403", description = "Not a workspace member â€” `FORBIDDEN`",
+                content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class))),
+        @ApiResponse(responseCode = "401", description = "Unauthorized - Invalid or missing token")
     })
     @PostMapping
     public ResponseEntity<Object> createBoard(
             @Valid @RequestBody CreateBoardDTO body,
-            @Parameter(description = "Workspace ID", required = true) 
+            @Parameter(description = "Workspace ID", required = true)
             @RequestParam("workspaceId") String workspaceId,
             @AuthenticationPrincipal User user) {
         
-        if (user == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("User not authenticated");
-        }
-        
-        // Validate and get workspace
-        Optional<Workspace> workspaceOpt = workspaceService.getWorkspaceById(
-            Objects.requireNonNull(workspaceId, "Workspace ID cannot be null")
-        );
+        Optional<Workspace> workspaceOpt = workspaceService.getWorkspaceById(workspaceId);
         if (workspaceOpt.isEmpty()) {
-            return ResponseEntity.badRequest().body("Workspace not found");
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ErrorResponseDTO(
+                "WORKSPACE_NOT_FOUND", "Workspace not found.", 404
+            ));
         }
         
         Workspace workspace = workspaceOpt.get();
         
-        // Check if workspace belongs to user
-        if (!workspaceService.isWorkspaceOwner(
-                Objects.requireNonNull(workspace, "Workspace cannot be null"), 
-                Objects.requireNonNull(user, "User cannot be null"))) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body("You don't have permission to create boards in this workspace");
+        // Any workspace member can create boards
+        if (!workspaceMemberService.isMember(workspace, user)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(new ErrorResponseDTO(
+                "FORBIDDEN", "You don't have permission to create boards in this workspace.", 403
+            ));
         }
         
-        BoardResponseDTO response = boardService.createBoard(
-            Objects.requireNonNull(body, "Request body cannot be null"), 
-            Objects.requireNonNull(user, "User cannot be null"), 
-            Objects.requireNonNull(workspace, "Workspace cannot be null")
-        );
+        BoardResponseDTO response = boardService.createBoard(body, user, workspace);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
-    @Operation(summary = "Get All Boards", description = "Retrieve all boards for a workspace")
+    @Operation(summary = "Get All Boards", description = "Retrieve all boards for a workspace. Any workspace member can list boards.")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Boards retrieved successfully"),
-        @ApiResponse(responseCode = "400", description = "Workspace not found"),
-        @ApiResponse(responseCode = "401", description = "Unauthorized - Invalid or missing token"),
-        @ApiResponse(responseCode = "403", description = "Forbidden - Workspace belongs to another user")
+        @ApiResponse(responseCode = "404", description = "Workspace not found â€” `WORKSPACE_NOT_FOUND`",
+                content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class))),
+        @ApiResponse(responseCode = "403", description = "Not a workspace member â€” `FORBIDDEN`",
+                content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class))),
+        @ApiResponse(responseCode = "401", description = "Unauthorized - Invalid or missing token")
     })
     @GetMapping
     public ResponseEntity<Object> getAllBoards(
-            @Parameter(description = "Workspace ID", required = true) 
+            @Parameter(description = "Workspace ID", required = true)
             @RequestParam("workspaceId") String workspaceId,
             @AuthenticationPrincipal User user) {
         
-        if (user == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("User not authenticated");
-        }
-        
-        // Validate and get workspace
-        Optional<Workspace> workspaceOpt = workspaceService.getWorkspaceById(
-            Objects.requireNonNull(workspaceId, "Workspace ID cannot be null")
-        );
+        Optional<Workspace> workspaceOpt = workspaceService.getWorkspaceById(workspaceId);
         if (workspaceOpt.isEmpty()) {
-            return ResponseEntity.badRequest().body("Workspace not found");
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ErrorResponseDTO(
+                "WORKSPACE_NOT_FOUND", "Workspace not found.", 404
+            ));
         }
         
         Workspace workspace = workspaceOpt.get();
         
-        // Check if workspace belongs to user
-        if (!workspaceService.isWorkspaceOwner(
-                Objects.requireNonNull(workspace, "Workspace cannot be null"), 
-                Objects.requireNonNull(user, "User cannot be null"))) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body("You don't have permission to view boards in this workspace");
+        // Any workspace member can list boards
+        if (!workspaceMemberService.isMember(workspace, user)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(new ErrorResponseDTO(
+                "FORBIDDEN", "You don't have permission to view boards in this workspace.", 403
+            ));
         }
         
-        List<BoardResponseDTO> response = boardService.getBoardsByWorkspace(
-            Objects.requireNonNull(workspace, "Workspace cannot be null")
-        );
+        List<BoardResponseDTO> response = boardService.getBoardsByWorkspace(workspace);
         return ResponseEntity.ok(response);
     }
 
-    @Operation(summary = "Get Board by ID", description = "Retrieve a specific board with all its lists and cards")
+    @Operation(summary = "Get Board by ID", description = "Retrieve a specific board with all its lists and cards. Any board member can view.")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Board found",
                 content = @Content(schema = @Schema(implementation = BoardDetailDTO.class))),
-        @ApiResponse(responseCode = "404", description = "Board not found"),
-        @ApiResponse(responseCode = "403", description = "Forbidden - Board belongs to another user"),
+        @ApiResponse(responseCode = "404", description = "Board not found â€” `BOARD_NOT_FOUND`",
+                content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class))),
+        @ApiResponse(responseCode = "403", description = "Not a board member â€” `FORBIDDEN`",
+                content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class))),
         @ApiResponse(responseCode = "401", description = "Unauthorized - Invalid or missing token")
     })
     @GetMapping("/{id}")
@@ -151,27 +143,30 @@ public class BoardController {
         Optional<Board> boardOpt = boardService.getBoardById(id);
         
         if (boardOpt.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body("Board not found");
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ErrorResponseDTO(
+                "BOARD_NOT_FOUND", "Board not found.", 404
+            ));
         }
         
         Board board = boardOpt.get();
         
-        // Check if board belongs to the authenticated user
-        if (!board.getOwner().getId().equals(user.getId())) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body("You don't have permission to access this board");
+        if (!boardMemberService.isMember(board, user)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(new ErrorResponseDTO(
+                "FORBIDDEN", "You don't have permission to access this board.", 403
+            ));
         }
         
         return ResponseEntity.ok(new BoardDetailDTO(board));
     }
 
-    @Operation(summary = "Update Board", description = "Update an existing board")
+    @Operation(summary = "Update Board", description = "Update an existing board. Only the board owner can update.")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Board updated successfully",
                 content = @Content(schema = @Schema(implementation = BoardResponseDTO.class))),
-        @ApiResponse(responseCode = "404", description = "Board not found"),
-        @ApiResponse(responseCode = "403", description = "Forbidden - Board belongs to another user"),
+        @ApiResponse(responseCode = "404", description = "Board not found â€” `BOARD_NOT_FOUND`",
+                content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class))),
+        @ApiResponse(responseCode = "403", description = "Not the board owner â€” `FORBIDDEN`",
+                content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class))),
         @ApiResponse(responseCode = "401", description = "Unauthorized - Invalid or missing token")
     })
     @PutMapping("/{id}")
@@ -183,44 +178,51 @@ public class BoardController {
         Optional<Board> boardOpt = boardService.getBoardById(id);
         
         if (boardOpt.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body("Board not found");
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ErrorResponseDTO(
+                "BOARD_NOT_FOUND", "Board not found.", 404
+            ));
         }
         
         Board board = boardOpt.get();
         
-        // Check if board belongs to the authenticated user
         if (!board.getOwner().getId().equals(user.getId())) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body("You don't have permission to update this board");
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(new ErrorResponseDTO(
+                "FORBIDDEN", "Only the board owner can update it.", 403
+            ));
         }
         
-        BoardResponseDTO response = boardService.updateBoard(board, Objects.requireNonNull(body));
+        BoardResponseDTO response = boardService.updateBoard(board, body);
         return ResponseEntity.ok(response);
     }
 
-    @Operation(summary = "Delete Board", description = "Delete a board by its ID")
+    @Operation(summary = "Delete Board", description = "Delete a board by its ID. Only the board owner can delete.")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "204", description = "Board deleted successfully"),
-        @ApiResponse(responseCode = "404", description = "Board not found"),
-        @ApiResponse(responseCode = "403", description = "Forbidden - Board belongs to another user"),
+        @ApiResponse(responseCode = "404", description = "Board not found â€” `BOARD_NOT_FOUND`",
+                content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class))),
+        @ApiResponse(responseCode = "403", description = "Not the board owner â€” `FORBIDDEN`",
+                content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class))),
         @ApiResponse(responseCode = "401", description = "Unauthorized - Invalid or missing token")
     })
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteBoard(
+    public ResponseEntity<Object> deleteBoard(
             @Parameter(description = "Board ID", required = true) @PathVariable @NonNull String id,
             @AuthenticationPrincipal User user) {
         
         Optional<Board> boardOpt = boardService.getBoardById(id);
         
         if (boardOpt.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ErrorResponseDTO(
+                "BOARD_NOT_FOUND", "Board not found.", 404
+            ));
         }
         
         Board board = boardOpt.get();
         
         if (!board.getOwner().getId().equals(user.getId())) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(new ErrorResponseDTO(
+                "FORBIDDEN", "Only the board owner can delete it.", 403
+            ));
         }
         
         boardService.deleteBoard(id);

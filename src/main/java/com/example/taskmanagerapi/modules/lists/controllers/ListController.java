@@ -1,7 +1,6 @@
-package com.example.taskmanagerapi.modules.lists.controllers;
+﻿package com.example.taskmanagerapi.modules.lists.controllers;
 
 import java.util.List;
-import java.util.Objects;
 import java.util.Optional;
 
 import org.springframework.http.HttpStatus;
@@ -18,7 +17,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.example.taskmanagerapi.modules.auth.domain.User;
+import com.example.taskmanagerapi.modules.auth.dto.ErrorResponseDTO;
 import com.example.taskmanagerapi.modules.boards.domain.Board;
+import com.example.taskmanagerapi.modules.boards.services.BoardMemberService;
 import com.example.taskmanagerapi.modules.boards.services.BoardService;
 import com.example.taskmanagerapi.modules.lists.domain.BoardList;
 import com.example.taskmanagerapi.modules.lists.dto.CreateListDTO;
@@ -39,8 +40,6 @@ import lombok.RequiredArgsConstructor;
 
 /**
  * ListController - REST controller for list operations
- * Single Responsibility: Handle HTTP requests for lists
- * Delegates business logic to BoardListService
  */
 @RestController
 @RequestMapping("/boards/{boardId}/lists")
@@ -51,13 +50,16 @@ public class ListController {
     
     private final BoardListService listService;
     private final BoardService boardService;
+    private final BoardMemberService boardMemberService;
 
-    @Operation(summary = "Create List", description = "Create a new list within a board")
+    @Operation(summary = "Create List", description = "Create a new list within a board. Any board member can create lists.")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "201", description = "List created successfully",
                 content = @Content(schema = @Schema(implementation = ListResponseDTO.class))),
-        @ApiResponse(responseCode = "404", description = "Board not found"),
-        @ApiResponse(responseCode = "403", description = "Forbidden - Board belongs to another user"),
+        @ApiResponse(responseCode = "404", description = "Board not found â€” `BOARD_NOT_FOUND`",
+                content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class))),
+        @ApiResponse(responseCode = "403", description = "Not a board member â€” `FORBIDDEN`",
+                content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class))),
         @ApiResponse(responseCode = "401", description = "Unauthorized - Invalid or missing token")
     })
     @PostMapping
@@ -66,29 +68,32 @@ public class ListController {
             @Valid @RequestBody CreateListDTO body,
             @AuthenticationPrincipal User user) {
 
-        // Validate board exists and belongs to user
         Optional<Board> boardOpt = boardService.getBoardById(boardId);
         if (boardOpt.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Board not found");
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ErrorResponseDTO(
+                "BOARD_NOT_FOUND", "Board not found.", 404
+            ));
         }
         
         Board board = boardOpt.get();
         
-        if (!board.getOwner().getId().equals(user.getId())) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body("You don't have permission to add lists to this board");
+        if (!boardMemberService.isMember(board, user)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(new ErrorResponseDTO(
+                "FORBIDDEN", "You don't have permission to add lists to this board.", 403
+            ));
         }
         
-        ListResponseDTO response = listService.createList(
-                Objects.requireNonNull(body), board);
+        ListResponseDTO response = listService.createList(body, board);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     @Operation(summary = "Get All Lists", description = "Retrieve all lists from a board ordered by position")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Lists retrieved successfully"),
-        @ApiResponse(responseCode = "404", description = "Board not found"),
-        @ApiResponse(responseCode = "403", description = "Forbidden - Board belongs to another user"),
+        @ApiResponse(responseCode = "404", description = "Board not found â€” `BOARD_NOT_FOUND`",
+                content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class))),
+        @ApiResponse(responseCode = "403", description = "Not a board member â€” `FORBIDDEN`",
+                content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class))),
         @ApiResponse(responseCode = "401", description = "Unauthorized - Invalid or missing token")
     })
     @GetMapping
@@ -98,14 +103,17 @@ public class ListController {
         
         Optional<Board> boardOpt = boardService.getBoardById(boardId);
         if (boardOpt.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Board not found");
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ErrorResponseDTO(
+                "BOARD_NOT_FOUND", "Board not found.", 404
+            ));
         }
         
         Board board = boardOpt.get();
         
-        if (!board.getOwner().getId().equals(user.getId())) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body("You don't have permission to view lists from this board");
+        if (!boardMemberService.isMember(board, user)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(new ErrorResponseDTO(
+                "FORBIDDEN", "You don't have permission to view lists from this board.", 403
+            ));
         }
         
         List<ListResponseDTO> response = listService.getListsByBoard(board);
@@ -116,8 +124,10 @@ public class ListController {
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "List found",
                 content = @Content(schema = @Schema(implementation = ListResponseDTO.class))),
-        @ApiResponse(responseCode = "404", description = "List not found"),
-        @ApiResponse(responseCode = "403", description = "Forbidden - Board belongs to another user"),
+        @ApiResponse(responseCode = "404", description = "List or board not found â€” `LIST_NOT_FOUND`, `BOARD_NOT_FOUND`",
+                content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class))),
+        @ApiResponse(responseCode = "403", description = "Not a board member â€” `FORBIDDEN`",
+                content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class))),
         @ApiResponse(responseCode = "401", description = "Unauthorized - Invalid or missing token")
     })
     @GetMapping("/{listId}")
@@ -128,30 +138,36 @@ public class ListController {
         
         Optional<BoardList> listOpt = listService.getListById(listId);
         if (listOpt.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("List not found");
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ErrorResponseDTO(
+                "LIST_NOT_FOUND", "List not found.", 404
+            ));
         }
         
         BoardList list = listOpt.get();
         
         if (!list.getBoard().getId().equals(boardId)) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body("List does not belong to this board");
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ErrorResponseDTO(
+                "LIST_NOT_FOUND", "List does not belong to this board.", 404
+            ));
         }
         
-        if (!list.getBoard().getOwner().getId().equals(user.getId())) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body("You don't have permission to view this list");
+        if (!boardMemberService.isMember(list.getBoard(), user)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(new ErrorResponseDTO(
+                "FORBIDDEN", "You don't have permission to view this list.", 403
+            ));
         }
         
         return ResponseEntity.ok(new ListResponseDTO(list));
     }
 
-    @Operation(summary = "Update List", description = "Update an existing list")
+    @Operation(summary = "Update List", description = "Update an existing list. Any board member can update lists.")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "List updated successfully",
                 content = @Content(schema = @Schema(implementation = ListResponseDTO.class))),
-        @ApiResponse(responseCode = "404", description = "List not found"),
-        @ApiResponse(responseCode = "403", description = "Forbidden - Board belongs to another user"),
+        @ApiResponse(responseCode = "404", description = "List not found â€” `LIST_NOT_FOUND`",
+                content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class))),
+        @ApiResponse(responseCode = "403", description = "Not a board member â€” `FORBIDDEN`",
+                content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class))),
         @ApiResponse(responseCode = "401", description = "Unauthorized - Invalid or missing token")
     })
     @PutMapping("/{listId}")
@@ -163,51 +179,63 @@ public class ListController {
         
         Optional<BoardList> listOpt = listService.getListById(listId);
         if (listOpt.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("List not found");
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ErrorResponseDTO(
+                "LIST_NOT_FOUND", "List not found.", 404
+            ));
         }
         
         BoardList list = listOpt.get();
         
         if (!list.getBoard().getId().equals(boardId)) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body("List does not belong to this board");
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ErrorResponseDTO(
+                "LIST_NOT_FOUND", "List does not belong to this board.", 404
+            ));
         }
         
-        if (!list.getBoard().getOwner().getId().equals(user.getId())) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body("You don't have permission to update this list");
+        if (!boardMemberService.isMember(list.getBoard(), user)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(new ErrorResponseDTO(
+                "FORBIDDEN", "You don't have permission to update this list.", 403
+            ));
         }
         
-        ListResponseDTO response = listService.updateList(list, Objects.requireNonNull(body));
+        ListResponseDTO response = listService.updateList(list, body);
         return ResponseEntity.ok(response);
     }
 
-    @Operation(summary = "Delete List", description = "Delete a list by its ID (cascades to all cards)")
+    @Operation(summary = "Delete List", description = "Delete a list by its ID (cascades to all cards). Only the board owner can delete lists.")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "204", description = "List deleted successfully"),
-        @ApiResponse(responseCode = "404", description = "List not found"),
-        @ApiResponse(responseCode = "403", description = "Forbidden - Board belongs to another user"),
+        @ApiResponse(responseCode = "404", description = "List not found â€” `LIST_NOT_FOUND`",
+                content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class))),
+        @ApiResponse(responseCode = "403", description = "Not the board owner â€” `FORBIDDEN`",
+                content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class))),
         @ApiResponse(responseCode = "401", description = "Unauthorized - Invalid or missing token")
     })
     @DeleteMapping("/{listId}")
-    public ResponseEntity<Void> deleteList(
+    public ResponseEntity<Object> deleteList(
             @Parameter(description = "Board ID", required = true) @PathVariable @NonNull String boardId,
             @Parameter(description = "List ID", required = true) @PathVariable @NonNull String listId,
             @AuthenticationPrincipal User user) {
         
         Optional<BoardList> listOpt = listService.getListById(listId);
         if (listOpt.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ErrorResponseDTO(
+                "LIST_NOT_FOUND", "List not found.", 404
+            ));
         }
         
         BoardList list = listOpt.get();
         
         if (!list.getBoard().getId().equals(boardId)) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ErrorResponseDTO(
+                "LIST_NOT_FOUND", "List does not belong to this board.", 404
+            ));
         }
         
         if (!list.getBoard().getOwner().getId().equals(user.getId())) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(new ErrorResponseDTO(
+                "FORBIDDEN", "Only the board owner can delete lists.", 403
+            ));
         }
         
         listService.deleteList(listId);

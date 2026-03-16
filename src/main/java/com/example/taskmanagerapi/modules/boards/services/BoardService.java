@@ -31,6 +31,7 @@ public class BoardService {
     
     private final BoardRepository boardRepository;
     private final BoardListService listService;
+    private final BoardMemberService boardMemberService;
 
     /**
      * Create a new board for a user within a workspace
@@ -45,6 +46,10 @@ public class BoardService {
         board.setWorkspace(workspace);
         
         Board savedBoard = boardRepository.save(board);
+
+        // Register owner as OWNER member
+        boardMemberService.addOwner(savedBoard, owner);
+
         return new BoardResponseDTO(savedBoard);
     }
 

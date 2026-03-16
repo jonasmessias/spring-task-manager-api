@@ -1,6 +1,6 @@
 # Task Manager API
 
-Java · Spring Boot · Spring Security · JWT · Redis · PostgreSQL · Docker
+Java · Spring Boot · Spring Security · JWT · Redis · PostgreSQL · Docker · AWS SES
 
 ---
 
@@ -15,17 +15,18 @@ Java · Spring Boot · Spring Security · JWT · Redis · PostgreSQL · Docker
 
 https://www.docker.com
 
-**2 — Configure email sending**
+**2 — Configure AWS SES (email sending)**
 
-Open `src/main/resources/application.properties` and set your Gmail credentials:
+Open `src/main/resources/application.properties` and fill in your AWS credentials:
 
 ```properties
-spring.mail.username=your-email@gmail.com
-spring.mail.password=your-app-password
+aws.ses.access-key=your-access-key
+aws.ses.secret-key=your-secret-key
+aws.ses.region=us-east-1
+aws.ses.from=your-verified-email@example.com
 ```
 
-Generate a Gmail App Password at:
-https://myaccount.google.com/apppasswords
+To get these credentials, see the [AWS SES setup guide](#aws-ses-setup) below.
 
 **3 — Run the application**
 
@@ -223,6 +224,22 @@ Authorization: Bearer <access_token>
 | PUT    | /boards/{id}             | Yes  | 200    | Update board                     |
 | DELETE | /boards/{id}             | Yes  | 204    | Delete board and all its content |
 
+### Workspace Members
+
+| Method | Path                              | Auth | Status | Description                        |
+| ------ | --------------------------------- | ---- | ------ | ---------------------------------- |
+| GET    | /workspaces/{id}/members          | Yes  | 200    | List all members of a workspace    |
+| POST   | /workspaces/{id}/members          | Yes  | 201    | Invite a user by email or username |
+| DELETE | /workspaces/{id}/members/{userId} | Yes  | 200    | Remove a member from workspace     |
+
+### Board Members
+
+| Method | Path                          | Auth | Status | Description                             |
+| ------ | ----------------------------- | ---- | ------ | --------------------------------------- |
+| GET    | /boards/{id}/members          | Yes  | 200    | List all members of a board             |
+| POST   | /boards/{id}/members          | Yes  | 201    | Invite a workspace member to this board |
+| DELETE | /boards/{id}/members/{userId} | Yes  | 200    | Remove a member from board              |
+
 ### Lists
 
 | Method | Path                             | Auth | Status | Description               |
@@ -286,3 +303,33 @@ Validation error format:
   "errors": [{ "field": "email", "message": "must not be blank" }]
 }
 ```
+
+---
+
+## AWS SES setup
+
+**1 — Create an IAM user**
+
+1. Go to https://console.aws.amazon.com/iam → **Users → Create user**
+2. Name: `task-manager-api`
+3. Attach policy: `AmazonSESFullAccess`
+4. Go to the user → **Security credentials → Create access key**
+5. Select **Application running outside AWS** — copy both keys
+
+**2 — Verify sender email**
+
+1. Go to https://console.aws.amazon.com/ses → region `us-east-1`
+2. **Verified Identities → Create Identity → Email address**
+3. Enter your sender email and confirm the verification email AWS sends
+
+**3 — Fill in `application.properties`**
+
+```properties
+aws.ses.access-key=AKIA...
+aws.ses.secret-key=...
+aws.ses.region=us-east-1
+aws.ses.from=your-verified-email@example.com
+```
+
+> **Note:** By default AWS SES is in **Sandbox mode** — you can only send to verified emails.
+> To send to anyone, request production access in the SES console → **Account dashboard**.

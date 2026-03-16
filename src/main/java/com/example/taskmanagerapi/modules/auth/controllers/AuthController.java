@@ -204,7 +204,8 @@ public class AuthController {
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Successfully refreshed token",
                 content = @Content(schema = @Schema(implementation = AuthResponseDTO.class))),
-        @ApiResponse(responseCode = "400", description = "Invalid or expired refresh token")
+        @ApiResponse(responseCode = "401", description = "Invalid or expired refresh token — `INVALID_TOKEN`",
+                content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class)))
     })
     @PostMapping("/refresh")
     public ResponseEntity<Object> refreshToken(
@@ -214,7 +215,9 @@ public class AuthController {
         Optional<RefreshToken> refreshTokenOpt = refreshTokenService.validateRefreshToken(body.refreshToken());
         
         if (refreshTokenOpt.isEmpty()) {
-            return ResponseEntity.badRequest().body("Invalid or expired refresh token");
+            return ResponseEntity.status(401).body(new ErrorResponseDTO(
+                "INVALID_TOKEN", "Invalid or expired refresh token.", 401
+            ));
         }
         
         RefreshToken refreshToken = refreshTokenOpt.get();
@@ -235,8 +238,10 @@ public class AuthController {
 
     @Operation(summary = "Logout", description = "Logout from current device by invalidating the specific refresh token")
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Successfully logged out from this device"),
-        @ApiResponse(responseCode = "400", description = "Refresh token is required"),
+        @ApiResponse(responseCode = "200", description = "Successfully logged out from this device",
+                content = @Content(schema = @Schema(implementation = MessageResponseDTO.class))),
+        @ApiResponse(responseCode = "400", description = "Refresh token is required — `MISSING_REFRESH_TOKEN`",
+                content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class))),
         @ApiResponse(responseCode = "401", description = "Unauthorized - invalid or missing access token")
     })
     @PostMapping("/logout")
@@ -246,7 +251,9 @@ public class AuthController {
             HttpServletRequest request) {
         
         if (body == null || body.refreshToken() == null) {
-            return ResponseEntity.badRequest().body("Refresh token is required for logout");
+            return ResponseEntity.badRequest().body(new ErrorResponseDTO(
+                "MISSING_REFRESH_TOKEN", "Refresh token is required for logout.", 400
+            ));
         }
         
         // Delete only the specific refresh token (per-instance logout)
@@ -255,12 +262,13 @@ public class AuthController {
         // Audit log
         auditLogService.logLogout(user, getClientIp(request));
         
-        return ResponseEntity.ok("Logged out successfully from this device");
+        return ResponseEntity.ok(new MessageResponseDTO("Logged out successfully from this device."));
     }
 
     @Operation(summary = "Logout from All Devices", description = "Invalidate all refresh tokens for the user (logout everywhere)")
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Successfully logged out from all devices"),
+        @ApiResponse(responseCode = "200", description = "Successfully logged out from all devices",
+                content = @Content(schema = @Schema(implementation = MessageResponseDTO.class))),
         @ApiResponse(responseCode = "401", description = "Unauthorized - invalid or missing token")
     })
     @PostMapping("/logout-all")
@@ -274,7 +282,7 @@ public class AuthController {
         // Audit log with special warning level
         auditLogService.logLogoutAll(user, getClientIp(request));
         
-        return ResponseEntity.ok("Logged out successfully from all devices");
+        return ResponseEntity.ok(new MessageResponseDTO("Logged out successfully from all devices."));
     }
 
     @Operation(summary = "Verify Email", description = "Verify user email address using the token sent by email")
@@ -400,8 +408,12 @@ public class AuthController {
 
     @Operation(summary = "Forgot Password", description = "Send password reset email to user")
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Reset email sent successfully"),
-        @ApiResponse(responseCode = "400", description = "Email not found")
+        @ApiResponse(responseCode = "200", description = "Reset email sent successfully",
+                content = @Content(schema = @Schema(implementation = MessageResponseDTO.class))),
+        @ApiResponse(responseCode = "404", description = "Email not found — `EMAIL_NOT_FOUND`",
+                content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class))),
+        @ApiResponse(responseCode = "500", description = "Email service error — `EMAIL_SEND_ERROR`",
+                content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class)))
     })
     @PostMapping("/forgot-password")
     public ResponseEntity<Object> forgotPassword(@RequestBody ForgotPasswordRequestDTO body) {
@@ -409,7 +421,9 @@ public class AuthController {
         Optional<User> userOpt = this.repository.findByEmail(body.email());
 
         if (userOpt.isEmpty()) {
-            return ResponseEntity.badRequest().body("E-mail not found.");
+            return ResponseEntity.status(404).body(new ErrorResponseDTO(
+                "EMAIL_NOT_FOUND", "E-mail not found.", 404
+            ));
         }
 
         String token = UUID.randomUUID().toString();
@@ -429,13 +443,17 @@ public class AuthController {
 
         emailService.sendEmail(body.email(), "Redefinição de senha - Task Manager", message);
 
-        return ResponseEntity.ok("E-mail de redefinição enviado para: " + body.email());
+        return ResponseEntity.ok(new MessageResponseDTO("Password reset email sent. Please check your inbox."));
     }
 
     @Operation(summary = "Reset Password", description = "Reset user password using token from email")
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Password reset successfully"),
-        @ApiResponse(responseCode = "400", description = "Invalid/expired token or passwords don't match")
+        @ApiResponse(responseCode = "200", description = "Password reset successfully",
+                content = @Content(schema = @Schema(implementation = MessageResponseDTO.class))),
+        @ApiResponse(responseCode = "400", description = "Passwords don't match — `PASSWORDS_DO_NOT_MATCH`",
+                content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class))),
+        @ApiResponse(responseCode = "401", description = "Invalid or expired token — `INVALID_TOKEN`, `EXPIRED_TOKEN`",
+                content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class)))
     })
     @PostMapping("/reset-password")
     public ResponseEntity<Object> resetPassword(
@@ -443,23 +461,32 @@ public class AuthController {
             HttpServletRequest request) {
 
         if(!body.newPassword().equals(body.confirmNewPassword())) {
-            return ResponseEntity.badRequest().body("Passwords do not match");
+            return ResponseEntity.badRequest().body(new ErrorResponseDTO(
+                "PASSWORDS_DO_NOT_MATCH", "Passwords do not match.", 400
+            ));
         }
 
         Optional<PasswordResetToken> tokenOpt = passwordResetTokenRepository.findByToken(body.token());
 
         if (tokenOpt.isEmpty()) {
-            return ResponseEntity.badRequest().body("Invalid token.");
+            return ResponseEntity.status(401).body(new ErrorResponseDTO(
+                "INVALID_TOKEN", "Invalid password reset token.", 401
+            ));
         }
 
         PasswordResetToken resetToken = tokenOpt.get();
         if (resetToken.getExpirationDate().isBefore(LocalDateTime.now())) {
-            return ResponseEntity.badRequest().body("Expired token.");
+            passwordResetTokenRepository.delete(resetToken);
+            return ResponseEntity.status(401).body(new ErrorResponseDTO(
+                "EXPIRED_TOKEN", "Password reset token has expired. Please request a new one.", 401
+            ));
         }
 
         Optional<User> userOpt = repository.findByEmail(resetToken.getEmail());
         if (userOpt.isEmpty()) {
-            return ResponseEntity.badRequest().body("User not found.");
+            return ResponseEntity.status(401).body(new ErrorResponseDTO(
+                "INVALID_TOKEN", "Invalid password reset token.", 401
+            ));
         }
 
         User user = userOpt.get();
@@ -467,7 +494,6 @@ public class AuthController {
         repository.save(user);
         
         // CRITICAL SECURITY: Invalidate all refresh tokens when password is reset
-        // This prevents attackers from continuing to use stolen tokens
         refreshTokenService.deleteAllUserTokens(user);
         
         // Audit log for security tracking
@@ -475,6 +501,6 @@ public class AuthController {
         
         passwordResetTokenRepository.delete(resetToken);
 
-        return ResponseEntity.ok("Password reset complete! All sessions have been logged out for security.");
+        return ResponseEntity.ok(new MessageResponseDTO("Password reset successfully. All sessions have been logged out for security."));
     }
 }

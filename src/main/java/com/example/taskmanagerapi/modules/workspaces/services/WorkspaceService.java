@@ -28,6 +28,7 @@ import lombok.RequiredArgsConstructor;
 public class WorkspaceService {
     
     private final WorkspaceRepository workspaceRepository;
+    private final WorkspaceMemberService memberService;
 
     /**
      * Create a new workspace for a user
@@ -44,14 +45,18 @@ public class WorkspaceService {
         workspace.setOwner(owner);
         
         Workspace savedWorkspace = workspaceRepository.save(workspace);
+
+        // Register owner as OWNER member
+        memberService.addOwner(savedWorkspace, owner);
+
         return new WorkspaceResponseDTO(savedWorkspace);
     }
 
     /**
-     * Get all workspaces for a user, ordered by creation date
+     * Get all workspaces for a user (owned + invited), ordered by creation date
      */
     public List<WorkspaceResponseDTO> getWorkspacesByUser(@NonNull User user) {
-        return workspaceRepository.findByOwnerOrderByCreatedAtDesc(user)
+        return workspaceRepository.findAllByMemberUser(user)
                 .stream()
                 .map(WorkspaceResponseDTO::new)
                 .collect(Collectors.toList());
