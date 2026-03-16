@@ -1,16 +1,1 @@
-{
-  "properties": [
-    {
-      "name": "api.security.token.secret",
-      "type": "java.lang.String",
-      "description": "Secret key used for JWT token generation and validation. MUST be changed in production!",
-      "defaultValue": "my-secret-key-from-task-manager"
-    },
-    {
-      "name": "app.frontend.url",
-      "type": "java.lang.String",
-      "description": "Frontend application URL for CORS configuration. Allows cross-origin requests from this URL.",
-      "defaultValue": "http://localhost:4200"
-    }
-  ]
-}
+{"properties":[{"name":"api.security.token.secret","type":"java.lang.String","description":"JWT secret key."},{"name":"app.frontend.url","type":"java.lang.String","description":"Frontend URL (localhost) for CORS and email links.","defaultValue":"http://localhost:4200"},{"name":"app.frontend.prod-url","type":"java.lang.String","description":"Frontend URL (production) for CORS.","defaultValue":"https://task-manager-app-angular.vercel.app"},{"name":"aws.ses.region","type":"java.lang.String","description":"AWS region for SES.","defaultValue":"us-east-1"},{"name":"aws.ses.access-key","type":"java.lang.String","description":"AWS IAM access key with ses:SendEmail permission."},{"name":"aws.ses.secret-key","type":"java.lang.String","description":"AWS IAM secret key."},{"name":"aws.ses.from","type":"java.lang.String","description":"Verified sender email in AWS SES."},{"name":"google.client-id","type":"java.lang.String","description":"Google OAuth2 client ID."}]}

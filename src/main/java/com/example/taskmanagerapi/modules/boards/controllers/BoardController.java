@@ -1,4 +1,4 @@
-ackage com.example.taskmanagerapi.modules.boards.controllers;
+package com.example.taskmanagerapi.modules.boards.controllers;
 
 import java.util.List;
 import java.util.Optional;
