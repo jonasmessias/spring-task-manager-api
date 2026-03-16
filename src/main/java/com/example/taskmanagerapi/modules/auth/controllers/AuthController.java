@@ -93,6 +93,15 @@ public class AuthController {
                 .or(() -> this.repository.findByUsername(body.emailOrUsername()))
                 .orElse(null);
 
+        // OAuth-only users have no password — direct them to use Google login
+        if (user != null && user.getPassword() == null) {
+            return ResponseEntity.status(401).body(new ErrorResponseDTO(
+                "USE_GOOGLE_LOGIN",
+                "This account uses Google Sign-In. Please log in with Google.",
+                401
+            ));
+        }
+
         if (user == null || !passwordEncoder.matches(body.password(), user.getPassword())) {
             return ResponseEntity.status(401).body(new ErrorResponseDTO(
                 "INVALID_CREDENTIALS",
