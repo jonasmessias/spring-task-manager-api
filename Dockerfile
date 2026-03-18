@@ -1,12 +1,10 @@
-FROM ubuntu:latest AS build
+FROM maven:3.9-eclipse-temurin-17 AS build
 LABEL authors="JONAS"
 
-RUN apt-get update
-RUN apt-get install openjdk-17-jdk -y
+COPY pom.xml .
+RUN mvn dependency:go-offline -B
 
-COPY . .
-
-RUN apt-get install maven -y
+COPY src ./src
 RUN mvn clean package -DskipTests
 
 FROM eclipse-temurin:17-jre-jammy

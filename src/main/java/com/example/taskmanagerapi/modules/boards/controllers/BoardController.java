@@ -3,6 +3,9 @@ package com.example.taskmanagerapi.modules.boards.controllers;
 import java.util.List;
 import java.util.Optional;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.lang.NonNull;
@@ -57,9 +60,9 @@ public class BoardController {
     @ApiResponses(value = {
         @ApiResponse(responseCode = "201", description = "Board created successfully",
                 content = @Content(schema = @Schema(implementation = BoardResponseDTO.class))),
-        @ApiResponse(responseCode = "404", description = "Workspace not found â€” `WORKSPACE_NOT_FOUND`",
+        @ApiResponse(responseCode = "404", description = "Workspace not found — `WORKSPACE_NOT_FOUND`",
                 content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class))),
-        @ApiResponse(responseCode = "403", description = "Not a workspace member â€” `FORBIDDEN`",
+        @ApiResponse(responseCode = "403", description = "Not a workspace member — `FORBIDDEN`",
                 content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class))),
         @ApiResponse(responseCode = "401", description = "Unauthorized - Invalid or missing token")
     })
@@ -93,9 +96,9 @@ public class BoardController {
     @Operation(summary = "Get All Boards", description = "Retrieve all boards for a workspace. Any workspace member can list boards.")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Boards retrieved successfully"),
-        @ApiResponse(responseCode = "404", description = "Workspace not found â€” `WORKSPACE_NOT_FOUND`",
+        @ApiResponse(responseCode = "404", description = "Workspace not found — `WORKSPACE_NOT_FOUND`",
                 content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class))),
-        @ApiResponse(responseCode = "403", description = "Not a workspace member â€” `FORBIDDEN`",
+        @ApiResponse(responseCode = "403", description = "Not a workspace member — `FORBIDDEN`",
                 content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class))),
         @ApiResponse(responseCode = "401", description = "Unauthorized - Invalid or missing token")
     })
@@ -103,6 +106,10 @@ public class BoardController {
     public ResponseEntity<Object> getAllBoards(
             @Parameter(description = "Workspace ID", required = true)
             @RequestParam("workspaceId") String workspaceId,
+            @Parameter(description = "Page number (0-based). Omit for unpaginated results.")
+            @RequestParam(value = "page", required = false) Integer page,
+            @Parameter(description = "Page size. Default: 20")
+            @RequestParam(value = "size", required = false, defaultValue = "20") int size,
             @AuthenticationPrincipal User user) {
         
         Optional<Workspace> workspaceOpt = workspaceService.getWorkspaceById(workspaceId);
@@ -121,6 +128,13 @@ public class BoardController {
             ));
         }
         
+        // If page parameter is provided, return paginated; otherwise return all
+        if (page != null) {
+            Pageable pageable = PageRequest.of(page, size);
+            Page<BoardResponseDTO> response = boardService.getBoardsByWorkspace(workspace, pageable);
+            return ResponseEntity.ok(response);
+        }
+        
         List<BoardResponseDTO> response = boardService.getBoardsByWorkspace(workspace);
         return ResponseEntity.ok(response);
     }
@@ -129,9 +143,9 @@ public class BoardController {
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Board found",
                 content = @Content(schema = @Schema(implementation = BoardDetailDTO.class))),
-        @ApiResponse(responseCode = "404", description = "Board not found â€” `BOARD_NOT_FOUND`",
+        @ApiResponse(responseCode = "404", description = "Board not found — `BOARD_NOT_FOUND`",
                 content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class))),
-        @ApiResponse(responseCode = "403", description = "Not a board member â€” `FORBIDDEN`",
+        @ApiResponse(responseCode = "403", description = "Not a board member — `FORBIDDEN`",
                 content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class))),
         @ApiResponse(responseCode = "401", description = "Unauthorized - Invalid or missing token")
     })
@@ -163,9 +177,9 @@ public class BoardController {
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Board updated successfully",
                 content = @Content(schema = @Schema(implementation = BoardResponseDTO.class))),
-        @ApiResponse(responseCode = "404", description = "Board not found â€” `BOARD_NOT_FOUND`",
+        @ApiResponse(responseCode = "404", description = "Board not found — `BOARD_NOT_FOUND`",
                 content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class))),
-        @ApiResponse(responseCode = "403", description = "Not the board owner â€” `FORBIDDEN`",
+        @ApiResponse(responseCode = "403", description = "Not the board owner — `FORBIDDEN`",
                 content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class))),
         @ApiResponse(responseCode = "401", description = "Unauthorized - Invalid or missing token")
     })
@@ -198,9 +212,9 @@ public class BoardController {
     @Operation(summary = "Delete Board", description = "Delete a board by its ID. Only the board owner can delete.")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "204", description = "Board deleted successfully"),
-        @ApiResponse(responseCode = "404", description = "Board not found â€” `BOARD_NOT_FOUND`",
+        @ApiResponse(responseCode = "404", description = "Board not found — `BOARD_NOT_FOUND`",
                 content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class))),
-        @ApiResponse(responseCode = "403", description = "Not the board owner â€” `FORBIDDEN`",
+        @ApiResponse(responseCode = "403", description = "Not the board owner — `FORBIDDEN`",
                 content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class))),
         @ApiResponse(responseCode = "401", description = "Unauthorized - Invalid or missing token")
     })

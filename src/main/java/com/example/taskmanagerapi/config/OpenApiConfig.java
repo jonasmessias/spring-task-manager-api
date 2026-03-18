@@ -103,6 +103,22 @@ public class OpenApiConfig {
                   "timestamp": "2026-03-06T12:00:00Z"
                 }""");
 
+        Example errorUseGoogleLogin = new Example().value("""
+                {
+                  "code": "USE_GOOGLE_LOGIN",
+                  "message": "This account uses Google Sign-In. Please log in with Google.",
+                  "statusCode": 401,
+                  "timestamp": "2026-03-06T12:00:00Z"
+                }""");
+
+        Example errorInvalidGoogleToken = new Example().value("""
+                {
+                  "code": "INVALID_GOOGLE_TOKEN",
+                  "message": "Invalid Google token.",
+                  "statusCode": 401,
+                  "timestamp": "2026-03-06T12:00:00Z"
+                }""");
+
         // ── Shared response definitions ──────────────────────────────────────
         ApiResponse response400 = new ApiResponse()
                 .description("Bad Request")
@@ -118,7 +134,10 @@ public class OpenApiConfig {
         ApiResponse response401 = new ApiResponse()
                 .description("Unauthorized")
                 .content(new Content().addMediaType("application/json",
-                        new MediaType().addExamples("INVALID_CREDENTIALS", errorInvalidCredentials)));
+                        new MediaType()
+                                .addExamples("INVALID_CREDENTIALS", errorInvalidCredentials)
+                                .addExamples("USE_GOOGLE_LOGIN", errorUseGoogleLogin)
+                                .addExamples("INVALID_GOOGLE_TOKEN", errorInvalidGoogleToken)));
 
         ApiResponse response403 = new ApiResponse()
                 .description("Forbidden")
@@ -191,8 +210,12 @@ public class OpenApiConfig {
                         .description("Profile management"))
                 .addTagsItem(new Tag().name("Workspaces")
                         .description("Top-level containers for organizing work"))
+                .addTagsItem(new Tag().name("Workspace Members")
+                        .description("Manage members of a workspace (invite, list, remove)"))
                 .addTagsItem(new Tag().name("Boards")
                         .description("Boards inside a workspace"))
+                .addTagsItem(new Tag().name("Board Members")
+                        .description("Manage members of a specific board (invite, list, remove)"))
                 .addTagsItem(new Tag().name("Board Lists")
                         .description("Lists (columns) inside a board"))
                 .addTagsItem(new Tag().name("Cards")

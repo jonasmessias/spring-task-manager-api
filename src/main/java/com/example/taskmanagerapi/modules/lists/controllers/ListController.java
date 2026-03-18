@@ -56,9 +56,9 @@ public class ListController {
     @ApiResponses(value = {
         @ApiResponse(responseCode = "201", description = "List created successfully",
                 content = @Content(schema = @Schema(implementation = ListResponseDTO.class))),
-        @ApiResponse(responseCode = "404", description = "Board not found â€” `BOARD_NOT_FOUND`",
+        @ApiResponse(responseCode = "404", description = "Board not found — `BOARD_NOT_FOUND`",
                 content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class))),
-        @ApiResponse(responseCode = "403", description = "Not a board member â€” `FORBIDDEN`",
+        @ApiResponse(responseCode = "403", description = "Not a board member — `FORBIDDEN`",
                 content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class))),
         @ApiResponse(responseCode = "401", description = "Unauthorized - Invalid or missing token")
     })
@@ -90,9 +90,9 @@ public class ListController {
     @Operation(summary = "Get All Lists", description = "Retrieve all lists from a board ordered by position")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Lists retrieved successfully"),
-        @ApiResponse(responseCode = "404", description = "Board not found â€” `BOARD_NOT_FOUND`",
+        @ApiResponse(responseCode = "404", description = "Board not found — `BOARD_NOT_FOUND`",
                 content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class))),
-        @ApiResponse(responseCode = "403", description = "Not a board member â€” `FORBIDDEN`",
+        @ApiResponse(responseCode = "403", description = "Not a board member — `FORBIDDEN`",
                 content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class))),
         @ApiResponse(responseCode = "401", description = "Unauthorized - Invalid or missing token")
     })
@@ -124,9 +124,9 @@ public class ListController {
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "List found",
                 content = @Content(schema = @Schema(implementation = ListResponseDTO.class))),
-        @ApiResponse(responseCode = "404", description = "List or board not found â€” `LIST_NOT_FOUND`, `BOARD_NOT_FOUND`",
+        @ApiResponse(responseCode = "404", description = "List or board not found — `LIST_NOT_FOUND`, `BOARD_NOT_FOUND`",
                 content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class))),
-        @ApiResponse(responseCode = "403", description = "Not a board member â€” `FORBIDDEN`",
+        @ApiResponse(responseCode = "403", description = "Not a board member — `FORBIDDEN`",
                 content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class))),
         @ApiResponse(responseCode = "401", description = "Unauthorized - Invalid or missing token")
     })
@@ -164,9 +164,9 @@ public class ListController {
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "List updated successfully",
                 content = @Content(schema = @Schema(implementation = ListResponseDTO.class))),
-        @ApiResponse(responseCode = "404", description = "List not found â€” `LIST_NOT_FOUND`",
+        @ApiResponse(responseCode = "404", description = "List not found — `LIST_NOT_FOUND`",
                 content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class))),
-        @ApiResponse(responseCode = "403", description = "Not a board member â€” `FORBIDDEN`",
+        @ApiResponse(responseCode = "403", description = "Not a board member — `FORBIDDEN`",
                 content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class))),
         @ApiResponse(responseCode = "401", description = "Unauthorized - Invalid or missing token")
     })
@@ -205,9 +205,9 @@ public class ListController {
     @Operation(summary = "Delete List", description = "Delete a list by its ID (cascades to all cards). Only the board owner can delete lists.")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "204", description = "List deleted successfully"),
-        @ApiResponse(responseCode = "404", description = "List not found â€” `LIST_NOT_FOUND`",
+        @ApiResponse(responseCode = "404", description = "List not found — `LIST_NOT_FOUND`",
                 content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class))),
-        @ApiResponse(responseCode = "403", description = "Not the board owner â€” `FORBIDDEN`",
+        @ApiResponse(responseCode = "403", description = "Not the board owner — `FORBIDDEN`",
                 content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class))),
         @ApiResponse(responseCode = "401", description = "Unauthorized - Invalid or missing token")
     })
