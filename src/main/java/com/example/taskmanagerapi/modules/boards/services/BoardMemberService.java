@@ -1,7 +1,9 @@
 package com.example.taskmanagerapi.modules.boards.services;
 
 import java.util.List;
+import java.util.Map;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,6 +27,9 @@ public class BoardMemberService {
     private final WorkspaceMemberRepository workspaceMemberRepository;
     private final UserRepository userRepository;
     private final EmailService emailService;
+
+    @Value("${app.frontend.url}")
+    private String frontendUrl;
 
     /**
      * Add the owner as OWNER member when board is created
@@ -65,15 +70,19 @@ public class BoardMemberService {
         member.setRole(MemberRole.MEMBER);
         BoardMemberDTO saved = new BoardMemberDTO(boardMemberRepository.save(member));
 
-        // Notify invited user by email
+        // Notify invited user by HTML email
         try {
-            emailService.sendEmail(
+            emailService.sendHtmlEmail(
                 target.getEmail(),
-                "Você foi convidado para um board - Task Manager",
-                "Olá, " + target.getName() + "!\n\n" +
-                board.getOwner().getName() + " convidou você para o board \"" + board.getName() + "\" " +
-                "no workspace \"" + board.getWorkspace().getName() + "\".\n\n" +
-                "Acesse o Task Manager para começar a colaborar.\n\nTask Manager"
+                "You've been invited to a board - Task Manager",
+                "member-invite",
+                Map.of(
+                    "inviterName", board.getOwner().getName(),
+                    "resourceType", "board",
+                    "resourceName", board.getName(),
+                    "role", "member",
+                    "acceptLink", frontendUrl
+                )
             );
         } catch (Exception ignored) {
             // Email failure should not block the invite
