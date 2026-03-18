@@ -1,7 +1,5 @@
 # 📋 Task Manager API# 📋 Task Manager API# Task Manager API
 
-
-
 [![Java](https://img.shields.io/badge/Java-17-ED8B00?style=flat&logo=openjdk&logoColor=white)](https://openjdk.org/)[![Java](https://img.shields.io/badge/Java-17-ED8B00?style=flat&logo=openjdk&logoColor=white)](https://openjdk.org/)Java · Spring Boot · Spring Security · JWT · Redis · PostgreSQL · Docker · AWS SES
 
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.5-6DB33F?style=flat&logo=springboot&logoColor=white)](https://spring.io/projects/spring-boot)
@@ -12,19 +10,11 @@
 
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?style=flat&logo=postgresql&logoColor=white)](https://www.postgresql.org/)---
 
-
-
 A production-ready **RESTful API** for task management built with Spring Boot. Features JWT + refresh token authentication, Google OAuth 2.0, workspace/board/list/card hierarchy, real-time member collaboration, HTML email notifications, and comprehensive audit logging.[![Redis](https://img.shields.io/badge/Redis-7-DC382D?style=flat&logo=redis&logoColor=white)](https://redis.io/)
-
-
 
 ---[![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)<!-- Add your architecture diagram image here -->
 
-
-
 ## 🏗️ Architecture<!-- ![Diagram](diagram.png) -->
-
-
 
 ```A production-ready **RESTful API** for task management built with Spring Boot. Features JWT + refresh token authentication, Google OAuth 2.0, workspace/board/list/card hierarchy, real-time member collaboration, HTML email notifications, and comprehensive audit logging.
 
@@ -50,15 +40,11 @@ A production-ready **RESTful API** for task management built with Spring Boot. F
 
                └────────┘ └──────┘ └────────┘
 
-```````
+```
 
+### Module Structure┌──────────────┐ ┌──────────────┐ ┌──────────────┐https://www.docker.com
 
-
-### Module Structure┌──────────────┐       ┌──────────────┐       ┌──────────────┐https://www.docker.com
-
-
-
-```│   Angular    │◄─────►│  Spring Boot │◄─────►│  PostgreSQL  │
+````│ Angular    │◄─────►│  Spring Boot │◄─────►│  PostgreSQL  │
 
 src/main/java/com/example/taskmanagerapi/
 
@@ -84,7 +70,7 @@ src/main/java/com/example/taskmanagerapi/
 
     └── cards/       # Card CRUD + drag-and-drop               ┌────▼───┐ ┌──▼───┐ ┌───▼────┐aws.ses.access-key=your-access-key
 
-```
+````
 
                │ Redis  │ │ AWS  │ │ Google │aws.ses.secret-key=your-secret-key
 
@@ -114,7 +100,7 @@ src/main/java/com/example/taskmanagerapi/
 
 | **Lists** | Ordered columns with drag-and-drop reordering |
 
-| **Cards** | Cards with status (ACTIVE, ARCHIVED, COMPLETED) + cross-list moves |├── config/          # OpenAPI & Redis configurationOpen a terminal in the project root and run:
+| **Cards** | Cards with status (ACTIVE, ARCHIVED, COMPLETED) + cross-list moves |├── config/ # OpenAPI & Redis configurationOpen a terminal in the project root and run:
 
 | **Members** | Workspace & board-level access control with HTML invite emails |
 
@@ -122,35 +108,29 @@ src/main/java/com/example/taskmanagerapi/
 
 | **Audit Logging** | All auth events persisted to database for security tracking |
 
-| **API Documentation** | Interactive Swagger UI with detailed schemas |│   ├── cors/        # CORS policy```bash
+| **API Documentation** | Interactive Swagger UI with detailed schemas |│ ├── cors/ # CORS policy```bash
 
+---│ ├── exception/ # Global exception handlerdocker-compose up -d
 
-
----│   ├── exception/   # Global exception handlerdocker-compose up -d
-
-
-
-## 🛠️ Tech Stack│   └── security/    # JWT filter, token service, security config```
-
-
+## 🛠️ Tech Stack│ └── security/ # JWT filter, token service, security config```
 
 - **Runtime:** Java 17, Spring Boot 3.5└── modules/
 
 - **Database:** PostgreSQL 16 (JPA/Hibernate)
 
-- **Cache:** Redis 7 (refresh token caching via Jedis)    ├── auth/        # Authentication, users, email, auditAfter running, the following services will be available:
+- **Cache:** Redis 7 (refresh token caching via Jedis) ├── auth/ # Authentication, users, email, auditAfter running, the following services will be available:
 
 - **Auth:** JWT (`com.auth0:java-jwt`), Google OAuth (`google-api-client`)
 
-- **Email:** AWS SES + Thymeleaf HTML templates    ├── workspaces/  # Workspace CRUD + members
+- **Email:** AWS SES + Thymeleaf HTML templates ├── workspaces/ # Workspace CRUD + members
 
 - **Docs:** Springdoc OpenAPI 2.8 (Swagger UI)
 
-- **Build:** Maven with Lombok annotation processing    ├── boards/      # Board CRUD + members| Service    | Port | URL                                   |
+- **Build:** Maven with Lombok annotation processing ├── boards/ # Board CRUD + members| Service | Port | URL |
 
 - **Container:** Docker + Docker Compose
 
-    ├── lists/       # List (column) CRUD| ---------- | ---- | ------------------------------------- |
+  ├── lists/ # List (column) CRUD| ---------- | ---- | ------------------------------------- |
 
 ---
 
@@ -158,7 +138,7 @@ src/main/java/com/example/taskmanagerapi/
 
 ## 🚀 Getting Started
 
-```| Swagger UI | 8080 | http://localhost:8080/swagger-ui.html |
+````| Swagger UI | 8080 | http://localhost:8080/swagger-ui.html |
 
 ### Prerequisites
 
@@ -220,25 +200,21 @@ Edit `application.properties` with your credentials:| **Google OAuth** | One-cli
 
 docker-compose up -d    # Starts PostgreSQL + Redis| **Cards** | Cards with status (ACTIVE, ARCHIVED, COMPLETED) + cross-list moves |
 
-```
+````
 
 | **Members** | Workspace & board-level access control |## Making requests
 
-| Service    | Port | URL                                   |
+| Service | Port | URL |
 
 |------------|------|---------------------------------------|| **Pagination** | Optional pagination on listing endpoints (`?page=0&size=20`) |
 
-| PostgreSQL | 5432 | `localhost:5432` (db: `taskmanager`)  |
+| PostgreSQL | 5432 | `localhost:5432` (db: `taskmanager`) |
 
-| Redis      | 6379 | `localhost:6379`                      || **Audit Logging** | All auth events persisted to database for security tracking |Open Swagger UI at http://localhost:8080/swagger-ui.html or use any HTTP client.
-
-
+| Redis | 6379 | `localhost:6379` || **Audit Logging** | All auth events persisted to database for security tracking |Open Swagger UI at http://localhost:8080/swagger-ui.html or use any HTTP client.
 
 ### 3. Run the API| **API Documentation** | Interactive Swagger UI with detailed schemas |
 
-
-
-```bashAll protected endpoints require the header:
+`````bashAll protected endpoints require the header:
 
 # Using Maven Wrapper
 
@@ -252,9 +228,9 @@ docker-compose up -d    # Starts PostgreSQL + Redis| **Cards** | Cards with stat
 
 java -jar target/task-manager-api-1.0.0.jar## 🛠️ Tech StackAuthorization: Bearer <access_token>
 
-```
+`````
 
-````
+````````
 
 The API will be available at `http://localhost:8080`.
 
@@ -574,7 +550,7 @@ All error responses follow the format:
 
 ---
 
-````
+````````
 
 ## 🐳 Docker
 
@@ -584,7 +560,7 @@ All error responses follow the format:
 
 Authorization: Bearer <access_token>
 
-```bash
+````bash
 
 docker-compose up -d    # PostgreSQL + Redis| Method | Endpoint | Description | Auth |```
 
@@ -604,7 +580,7 @@ docker build -t task-manager-api .
 
 docker run -p 8080:8080 --env-file .env task-manager-api| `GET` | `/workspaces/{id}` | Get workspace details | ✅ |```
 
-```
+````
 
 | `PUT` | `/workspaces/{id}` | Update workspace | ✅ |
 
@@ -614,20 +590,14 @@ docker run -p 8080:8080 --env-file .env task-manager-api| `GET` | `/workspaces/{
 
 ## ☁️ AWS SES Setup
 
-
-
 1. **Create an IAM user** at [AWS IAM Console](https://console.aws.amazon.com/iam)
-
    - Name: `task-manager-ses`### Workspace Members```
 
    - Attach policy: `AmazonSESFullAccess`
 
    - Create access key → copy both keysPOST > http://localhost:8080/boards/<board_id>/lists
 
-
-
 2. **Verify sender email** at [AWS SES Console](https://console.aws.amazon.com/ses)| Method | Endpoint | Description | Auth |Authorization: Bearer <access_token>
-
    - Region: `us-east-1`
 
    - Verified Identities → Create Identity → Email address|--------|----------|-------------|------|```
@@ -640,7 +610,7 @@ docker run -p 8080:8080 --env-file .env task-manager-api| `GET` | `/workspaces/{
 
 | `GET` | `/workspaces/{id}/members` | List members | ✅ |```json
 
-```properties
+````properties
 
 aws.ses.access-key=AKIA...| `PUT` | `/workspaces/{id}/members/{memberId}` | Update role | ✅ |{ "name": "To Do" }
 
@@ -650,15 +620,11 @@ aws.ses.region=us-east-1| `DELETE` | `/workspaces/{id}/members/{memberId}` | Rem
 
 aws.ses.from=your-verified-email@example.com
 
-```
-
-
+````
 
 > **Note:** AWS SES starts in **Sandbox mode** — you can only send to verified emails.### Boards**Create a card inside the list**
 
 > Request production access in the SES console to send to anyone.
-
-
 
 ---
 
@@ -684,7 +650,7 @@ This project is licensed under the MIT License.
 
 | `DELETE` | `/boards/{id}` | Delete board | ✅ |{ "name": "Task 1", "description": "Task description", "status": "ACTIVE" }
 
-````
+`````
 
 ### Board Members
 
@@ -976,7 +942,7 @@ aws.ses.region=us-east-12. **Verified Identities → Create Identity → Email a
 
 aws.ses.from=your-verified-email@example.com3. Enter your sender email and confirm the verification email AWS sends
 
-````
+`````
 
 **3 — Fill in `application.properties`**
 
