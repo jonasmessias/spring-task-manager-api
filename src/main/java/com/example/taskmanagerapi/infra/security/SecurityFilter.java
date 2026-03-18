@@ -32,7 +32,7 @@ public class SecurityFilter extends OncePerRequestFilter {
         var token = this.recoverToken(request);
 
         if(token != null){
-            var login = tokenService.validadeToken(token);
+            var login = tokenService.validateToken(token);
             
             if(login != null) {
                 User user = userRepository.findByEmail(login).orElseThrow(() -> new RuntimeException("User Not Found") );
