@@ -1,23 +1,13 @@
 package com.example.taskmanagerapi.modules.auth.controllers;
 
-import java.time.LocalDateTime;
-import java.util.Optional;
-import java.util.UUID;
-
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.example.taskmanagerapi.infra.security.TokenService;
-import com.example.taskmanagerapi.modules.auth.domain.EmailVerificationToken;
-import com.example.taskmanagerapi.modules.auth.domain.PasswordResetToken;
-import com.example.taskmanagerapi.modules.auth.domain.RefreshToken;
 import com.example.taskmanagerapi.modules.auth.domain.User;
 import com.example.taskmanagerapi.modules.auth.dto.AuthResponseDTO;
 import com.example.taskmanagerapi.modules.auth.dto.ErrorResponseDTO;
@@ -29,13 +19,8 @@ import com.example.taskmanagerapi.modules.auth.dto.RefreshTokenRequestDTO;
 import com.example.taskmanagerapi.modules.auth.dto.RegisterRequestDTO;
 import com.example.taskmanagerapi.modules.auth.dto.ResetPasswordDTO;
 import com.example.taskmanagerapi.modules.auth.dto.VerifyEmailRequestDTO;
-import com.example.taskmanagerapi.modules.auth.repositories.EmailVerificationRepository;
-import com.example.taskmanagerapi.modules.auth.repositories.PasswordResetRepository;
-import com.example.taskmanagerapi.modules.auth.repositories.UserRepository;
-import com.example.taskmanagerapi.modules.auth.services.AuditLogService;
-import com.example.taskmanagerapi.modules.auth.services.EmailService;
-import com.example.taskmanagerapi.modules.auth.services.GoogleAuthService;
-import com.example.taskmanagerapi.modules.auth.services.RefreshTokenService;
+import com.example.taskmanagerapi.modules.auth.services.AuthService;
+import com.example.taskmanagerapi.modules.auth.services.AuthService.LoginResult;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -47,24 +32,22 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
+/**
+ * AuthController — thin REST controller that delegates all business logic
+ * to AuthService. Responsible only for HTTP concerns (request/response mapping).
+ */
 @RestController
 @RequestMapping("/auth")
 @RequiredArgsConstructor
 @Tag(name = "Authentication", description = "Endpoints for user authentication and password management")
 public class AuthController {
-    private final UserRepository repository;
-    private final PasswordEncoder passwordEncoder;
-    private final TokenService tokenService;
-    private final RefreshTokenService refreshTokenService;
-    private final AuditLogService auditLogService;
-    private final PasswordResetRepository passwordResetTokenRepository;
-    private final EmailService emailService;
-    private final EmailVerificationRepository emailVerificationRepository;
-    private final GoogleAuthService googleAuthService;
 
-    @Value("${app.frontend.url}")
-    private String frontendUrl;
-    
+    private final AuthService authService;
+
+    // =========================================================================
+    // Helpers
+    // =========================================================================
+
     private String getClientIp(HttpServletRequest request) {
         String ip = request.getHeader("X-Forwarded-For");
         if (ip == null || ip.isEmpty()) {
@@ -72,6 +55,14 @@ public class AuthController {
         }
         return ip;
     }
+
+    private ResponseEntity<Object> toResponse(LoginResult result) {
+        return ResponseEntity.status(result.status()).body(result.body());
+    }
+
+    // =========================================================================
+    // Endpoints
+    // =========================================================================
 
     @Operation(summary = "Login", description = "Authenticate user and return access token + refresh token")
     @ApiResponses(value = {
@@ -87,51 +78,7 @@ public class AuthController {
             @RequestBody LoginRequestDTO body,
             @RequestHeader(value = "User-Agent", required = false) String userAgent,
             HttpServletRequest request) {
-        
-        // Try to find user by email or username
-        User user = this.repository.findByEmail(body.emailOrUsername())
-                .or(() -> this.repository.findByUsername(body.emailOrUsername()))
-                .orElse(null);
-
-        // OAuth-only users have no password — direct them to use Google login
-        if (user != null && user.getPassword() == null) {
-            return ResponseEntity.status(401).body(new ErrorResponseDTO(
-                "USE_GOOGLE_LOGIN",
-                "This account uses Google Sign-In. Please log in with Google.",
-                401
-            ));
-        }
-
-        if (user == null || !passwordEncoder.matches(body.password(), user.getPassword())) {
-            return ResponseEntity.status(401).body(new ErrorResponseDTO(
-                "INVALID_CREDENTIALS",
-                "Invalid credentials.",
-                401
-            ));
-        }
-
-        if (!user.isEmailVerified()) {
-            return ResponseEntity.status(403).body(new ErrorResponseDTO(
-                "EMAIL_NOT_VERIFIED",
-                "Email not verified. Please check your inbox and verify your account.",
-                403
-            ));
-        }
-
-        String accessToken = tokenService.generateToken(user);
-        String clientIp = getClientIp(request);
-        
-        // Create refresh token
-        RefreshToken refreshToken = refreshTokenService.createRefreshToken(user, clientIp, userAgent);
-        
-        // Audit log
-        auditLogService.logLogin(user, clientIp, userAgent);
-        
-        return ResponseEntity.ok(new AuthResponseDTO(
-            user.getName(), 
-            accessToken, 
-            refreshToken.getToken()
-        ));
+        return toResponse(authService.login(body, getClientIp(request), userAgent));
     }
 
     @Operation(summary = "Google Login / Register",
@@ -147,18 +94,7 @@ public class AuthController {
             @Valid @RequestBody GoogleTokenRequestDTO body,
             @RequestHeader(value = "User-Agent", required = false) String userAgent,
             HttpServletRequest request) {
-        try {
-            User user = googleAuthService.verifyAndGetUser(body.idToken());
-            String accessToken = tokenService.generateToken(user);
-            String clientIp = getClientIp(request);
-            RefreshToken refreshToken = refreshTokenService.createRefreshToken(user, clientIp, userAgent);
-            auditLogService.logLogin(user, clientIp, userAgent);
-            return ResponseEntity.ok(new AuthResponseDTO(user.getName(), accessToken, refreshToken.getToken()));
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.status(401).body(new ErrorResponseDTO(
-                "INVALID_GOOGLE_TOKEN", "Invalid or expired Google token.", 401
-            ));
-        }
+        return toResponse(authService.googleLogin(body.idToken(), getClientIp(request), userAgent));
     }
 
     @Operation(summary = "Register", description = "Create a new user account. Sends a verification email on success.")
@@ -175,68 +111,7 @@ public class AuthController {
             @Valid @RequestBody RegisterRequestDTO body,
             @RequestHeader(value = "User-Agent", required = false) String userAgent,
             HttpServletRequest request) {
-
-        if(!body.password().equals(body.confirmPassword())){
-            return ResponseEntity.badRequest().body(new ErrorResponseDTO(
-                "PASSWORDS_DO_NOT_MATCH",
-                "Passwords do not match.",
-                400
-            ));
-        }
-
-        Optional<User> existingEmail = this.repository.findByEmail(body.email());
-        if(existingEmail.isPresent()) {
-            return ResponseEntity.badRequest().body(new ErrorResponseDTO(
-                "EMAIL_ALREADY_EXISTS",
-                "Email already registered.",
-                400
-            ));
-        }
-        
-        Optional<User> existingUsername = this.repository.findByUsername(body.username());
-        if(existingUsername.isPresent()) {
-            return ResponseEntity.badRequest().body(new ErrorResponseDTO(
-                "USERNAME_ALREADY_EXISTS",
-                "Username already taken.",
-                400
-            ));
-        }
-
-        User newUser = new User();
-        newUser.setPassword(passwordEncoder.encode(body.password()));
-        newUser.setEmail(body.email());
-        newUser.setName(body.name());
-        newUser.setUsername(body.username());
-        newUser.setEmailVerified(false);
-        this.repository.save(newUser);
-
-        // Generate email verification token (expires in 24 hours)
-        String verificationToken = UUID.randomUUID().toString();
-        emailVerificationRepository.deleteByEmail(body.email());
-
-        EmailVerificationToken emailToken = new EmailVerificationToken();
-        emailToken.setEmail(body.email());
-        emailToken.setToken(verificationToken);
-        emailToken.setExpirationDate(LocalDateTime.now().plusHours(24));
-        emailVerificationRepository.save(emailToken);
-
-        String verificationLink = frontendUrl + "/verify-email?token=" + verificationToken;
-        String message = "Olá, " + newUser.getName() + "!\n\n" +
-                "Obrigado por se cadastrar no Task Manager!\n\n" +
-                "Clique no link abaixo para verificar seu e-mail e ativar sua conta:\n" +
-                verificationLink + "\n\n" +
-                "O link expira em 24 horas.\n\n" +
-                "Se você não criou esta conta, ignore este e-mail.\n\nTask Manager";
-
-        emailService.sendEmail(body.email(), "Verifique seu e-mail - Task Manager", message);
-
-        // Audit log
-        String clientIp = getClientIp(request);
-        auditLogService.logRegistration(newUser, clientIp);
-
-        return ResponseEntity.status(201).body(new MessageResponseDTO(
-            "Registration successful! Please check your email to verify your account."
-        ));
+        return toResponse(authService.register(body, getClientIp(request)));
     }
 
     @Operation(summary = "Refresh Token", description = "Get a new access token using refresh token")
@@ -250,29 +125,7 @@ public class AuthController {
     public ResponseEntity<Object> refreshToken(
             @RequestBody RefreshTokenRequestDTO body,
             HttpServletRequest request) {
-        
-        Optional<RefreshToken> refreshTokenOpt = refreshTokenService.validateRefreshToken(body.refreshToken());
-        
-        if (refreshTokenOpt.isEmpty()) {
-            return ResponseEntity.status(401).body(new ErrorResponseDTO(
-                "INVALID_TOKEN", "Invalid or expired refresh token.", 401
-            ));
-        }
-        
-        RefreshToken refreshToken = refreshTokenOpt.get();
-        User user = refreshToken.getUser();
-        
-        // Generate new access token
-        String newAccessToken = tokenService.generateToken(user);
-        
-        // Audit log
-        auditLogService.logTokenRefresh(user, getClientIp(request));
-        
-        return ResponseEntity.ok(new AuthResponseDTO(
-            user.getName(), 
-            newAccessToken, 
-            refreshToken.getToken()
-        ));
+        return toResponse(authService.refreshToken(body.refreshToken(), getClientIp(request)));
     }
 
     @Operation(summary = "Logout", description = "Logout from current device by invalidating the specific refresh token")
@@ -288,19 +141,12 @@ public class AuthController {
             @AuthenticationPrincipal User user,
             @RequestBody RefreshTokenRequestDTO body,
             HttpServletRequest request) {
-        
         if (body == null || body.refreshToken() == null) {
             return ResponseEntity.badRequest().body(new ErrorResponseDTO(
                 "MISSING_REFRESH_TOKEN", "Refresh token is required for logout.", 400
             ));
         }
-        
-        // Delete only the specific refresh token (per-instance logout)
-        refreshTokenService.deleteRefreshToken(body.refreshToken());
-        
-        // Audit log
-        auditLogService.logLogout(user, getClientIp(request));
-        
+        authService.logout(user, body.refreshToken(), getClientIp(request));
         return ResponseEntity.ok(new MessageResponseDTO("Logged out successfully from this device."));
     }
 
@@ -314,13 +160,7 @@ public class AuthController {
     public ResponseEntity<Object> logoutAll(
             @AuthenticationPrincipal User user,
             HttpServletRequest request) {
-        
-        // Delete all refresh tokens for this user
-        refreshTokenService.deleteAllUserTokens(user);
-        
-        // Audit log with special warning level
-        auditLogService.logLogoutAll(user, getClientIp(request));
-        
+        authService.logoutAll(user, getClientIp(request));
         return ResponseEntity.ok(new MessageResponseDTO("Logged out successfully from all devices."));
     }
 
@@ -335,57 +175,7 @@ public class AuthController {
     public ResponseEntity<Object> verifyEmail(
             @RequestBody VerifyEmailRequestDTO body,
             HttpServletRequest request) {
-
-        Optional<EmailVerificationToken> tokenOpt = emailVerificationRepository.findByToken(body.token());
-
-        if (tokenOpt.isEmpty()) {
-            return ResponseEntity.badRequest().body(new ErrorResponseDTO(
-                "INVALID_TOKEN",
-                "Invalid verification token.",
-                400
-            ));
-        }
-
-        EmailVerificationToken verificationToken = tokenOpt.get();
-
-        if (verificationToken.getExpirationDate().isBefore(LocalDateTime.now())) {
-            emailVerificationRepository.delete(verificationToken);
-            return ResponseEntity.badRequest().body(new ErrorResponseDTO(
-                "EXPIRED_TOKEN",
-                "Verification token has expired. Please request a new one.",
-                400
-            ));
-        }
-
-        Optional<User> userOpt = repository.findByEmail(verificationToken.getEmail());
-
-        if (userOpt.isEmpty()) {
-            return ResponseEntity.badRequest().body(new ErrorResponseDTO(
-                "INVALID_TOKEN",
-                "User not found for this token.",
-                400
-            ));
-        }
-
-        User user = userOpt.get();
-
-        if (user.isEmailVerified()) {
-            emailVerificationRepository.delete(verificationToken);
-            return ResponseEntity.badRequest().body(new ErrorResponseDTO(
-                "EMAIL_ALREADY_VERIFIED",
-                "This email is already verified. You can log in.",
-                400
-            ));
-        }
-
-        user.setEmailVerified(true);
-        repository.save(user);
-
-        emailVerificationRepository.delete(verificationToken);
-
-        auditLogService.logEmailVerification(user, getClientIp(request));
-
-        return ResponseEntity.ok(new MessageResponseDTO("Email verified successfully! You can now log in."));
+        return toResponse(authService.verifyEmail(body.token(), getClientIp(request)));
     }
 
     @Operation(summary = "Resend Verification Email", description = "Resend the email verification link to the user")
@@ -401,48 +191,7 @@ public class AuthController {
     })
     @PostMapping("/resend-verification")
     public ResponseEntity<Object> resendVerification(@RequestBody ForgotPasswordRequestDTO body) {
-
-        Optional<User> userOpt = this.repository.findByEmail(body.email());
-
-        if (userOpt.isEmpty()) {
-            return ResponseEntity.status(404).body(new ErrorResponseDTO(
-                "EMAIL_NOT_FOUND",
-                "E-mail not found.",
-                404
-            ));
-        }
-
-        User user = userOpt.get();
-
-        if (user.isEmailVerified()) {
-            return ResponseEntity.badRequest().body(new ErrorResponseDTO(
-                "EMAIL_ALREADY_VERIFIED",
-                "This email is already verified. You can log in.",
-                400
-            ));
-        }
-
-        // Invalidate old token and generate a new one
-        emailVerificationRepository.deleteByEmail(body.email());
-
-        String verificationToken = UUID.randomUUID().toString();
-        EmailVerificationToken emailToken = new EmailVerificationToken();
-        emailToken.setEmail(body.email());
-        emailToken.setToken(verificationToken);
-        emailToken.setExpirationDate(LocalDateTime.now().plusHours(24));
-        emailVerificationRepository.save(emailToken);
-
-        String verificationLink = frontendUrl + "/verify-email?token=" + verificationToken;
-        String message = "Olá, " + user.getName() + "!\n\n" +
-                "Você solicitou um novo link de verificação.\n\n" +
-                "Clique no link abaixo para verificar seu e-mail e ativar sua conta:\n" +
-                verificationLink + "\n\n" +
-                "O link expira em 24 horas.\n\n" +
-                "Se você não solicitou isso, ignore este e-mail.\n\nTask Manager";
-
-        emailService.sendEmail(body.email(), "Novo link de verificação - Task Manager", message);
-
-        return ResponseEntity.ok(new MessageResponseDTO("Verification email resent successfully."));
+        return toResponse(authService.resendVerification(body.email()));
     }
 
     @Operation(summary = "Forgot Password", description = "Send password reset email to user")
@@ -456,33 +205,7 @@ public class AuthController {
     })
     @PostMapping("/forgot-password")
     public ResponseEntity<Object> forgotPassword(@RequestBody ForgotPasswordRequestDTO body) {
-
-        Optional<User> userOpt = this.repository.findByEmail(body.email());
-
-        if (userOpt.isEmpty()) {
-            return ResponseEntity.status(404).body(new ErrorResponseDTO(
-                "EMAIL_NOT_FOUND", "E-mail not found.", 404
-            ));
-        }
-
-        String token = UUID.randomUUID().toString();
-        passwordResetTokenRepository.deleteByEmail(body.email());
-
-        PasswordResetToken resetToken = new PasswordResetToken();
-        resetToken.setEmail(body.email());
-        resetToken.setToken(token);
-        resetToken.setExpirationDate(LocalDateTime.now().plusMinutes(30));
-        passwordResetTokenRepository.save(resetToken);
-
-        String resetLink = frontendUrl + "/reset-password?token=" + token;
-        String message = "Olá, " + userOpt.get().getName() + "!\n\n" +
-                "Clique no link abaixo para redefinir sua senha:\n" +
-                resetLink + "\n\n" +
-                "O link expira em 30 minutos.\n\nTask Manager";
-
-        emailService.sendEmail(body.email(), "Redefinição de senha - Task Manager", message);
-
-        return ResponseEntity.ok(new MessageResponseDTO("Password reset email sent. Please check your inbox."));
+        return toResponse(authService.forgotPassword(body.email()));
     }
 
     @Operation(summary = "Reset Password", description = "Reset user password using token from email")
@@ -498,48 +221,6 @@ public class AuthController {
     public ResponseEntity<Object> resetPassword(
             @RequestBody ResetPasswordDTO body,
             HttpServletRequest request) {
-
-        if(!body.newPassword().equals(body.confirmNewPassword())) {
-            return ResponseEntity.badRequest().body(new ErrorResponseDTO(
-                "PASSWORDS_DO_NOT_MATCH", "Passwords do not match.", 400
-            ));
-        }
-
-        Optional<PasswordResetToken> tokenOpt = passwordResetTokenRepository.findByToken(body.token());
-
-        if (tokenOpt.isEmpty()) {
-            return ResponseEntity.status(401).body(new ErrorResponseDTO(
-                "INVALID_TOKEN", "Invalid password reset token.", 401
-            ));
-        }
-
-        PasswordResetToken resetToken = tokenOpt.get();
-        if (resetToken.getExpirationDate().isBefore(LocalDateTime.now())) {
-            passwordResetTokenRepository.delete(resetToken);
-            return ResponseEntity.status(401).body(new ErrorResponseDTO(
-                "EXPIRED_TOKEN", "Password reset token has expired. Please request a new one.", 401
-            ));
-        }
-
-        Optional<User> userOpt = repository.findByEmail(resetToken.getEmail());
-        if (userOpt.isEmpty()) {
-            return ResponseEntity.status(401).body(new ErrorResponseDTO(
-                "INVALID_TOKEN", "Invalid password reset token.", 401
-            ));
-        }
-
-        User user = userOpt.get();
-        user.setPassword(passwordEncoder.encode(body.newPassword()));
-        repository.save(user);
-        
-        // CRITICAL SECURITY: Invalidate all refresh tokens when password is reset
-        refreshTokenService.deleteAllUserTokens(user);
-        
-        // Audit log for security tracking
-        auditLogService.logPasswordReset(user, getClientIp(request));
-        
-        passwordResetTokenRepository.delete(resetToken);
-
-        return ResponseEntity.ok(new MessageResponseDTO("Password reset successfully. All sessions have been logged out for security."));
+        return toResponse(authService.resetPassword(body, getClientIp(request)));
     }
 }
