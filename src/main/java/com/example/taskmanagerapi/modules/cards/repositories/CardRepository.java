@@ -2,6 +2,8 @@ package com.example.taskmanagerapi.modules.cards.repositories;
 
 import java.util.List;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -13,6 +15,9 @@ public interface CardRepository extends JpaRepository<Card, String> {
     List<Card> findByList(BoardList list);
     List<Card> findByListOrderByPositionAsc(BoardList list);
     void deleteByList(BoardList list);
+
+    // Paginated query
+    Page<Card> findByListOrderByPositionAsc(BoardList list, Pageable pageable);
 
     /**
      * Find the maximum position value for cards in a list.

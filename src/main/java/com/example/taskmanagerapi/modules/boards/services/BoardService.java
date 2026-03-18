@@ -6,6 +6,8 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -61,6 +63,14 @@ public class BoardService {
                 .stream()
                 .map(BoardResponseDTO::new)
                 .collect(Collectors.toList());
+    }
+
+    /**
+     * Get boards for a workspace with pagination
+     */
+    public Page<BoardResponseDTO> getBoardsByWorkspace(@NonNull Workspace workspace, @NonNull Pageable pageable) {
+        return boardRepository.findByWorkspaceOrderByCreatedAtDesc(workspace, pageable)
+                .map(BoardResponseDTO::new);
     }
 
     /**
