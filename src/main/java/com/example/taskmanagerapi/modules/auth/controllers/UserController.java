@@ -3,6 +3,7 @@ package com.example.taskmanagerapi.modules.auth.controllers;
 import java.util.Optional;
 
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.lang.NonNull;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -12,12 +13,16 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 import com.example.taskmanagerapi.modules.auth.domain.User;
 import com.example.taskmanagerapi.modules.auth.dto.UpdateProfileDTO;
 import com.example.taskmanagerapi.modules.auth.dto.UserProfileDTO;
 import com.example.taskmanagerapi.modules.auth.repositories.UserRepository;
+import com.example.taskmanagerapi.modules.storage.dto.UploadResponseDTO;
+import com.example.taskmanagerapi.modules.storage.services.StorageService;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -38,6 +43,9 @@ import lombok.RequiredArgsConstructor;
 public class UserController {
     
     private final UserRepository userRepository;
+    private final StorageService storageService;
+
+    private static final String AVATAR_FOLDER = "avatars";
 
     @Operation(summary = "Get Current User", description = "Get information about the currently authenticated user")
     @ApiResponses(value = {
@@ -51,7 +59,8 @@ public class UserController {
             user.getId(),
             user.getName(),
             user.getUsername(),
-            user.getEmail()
+            user.getEmail(),
+            user.getAvatarUrl()
         ));
     }
 
@@ -89,7 +98,8 @@ public class UserController {
             saved.getId(),
             saved.getName(),
             saved.getUsername(),
-            saved.getEmail()
+            saved.getEmail(),
+            saved.getAvatarUrl()
         ));
     }
 
@@ -100,9 +110,54 @@ public class UserController {
     })
     @DeleteMapping("/me")
     public ResponseEntity<Void> deleteAccount(@AuthenticationPrincipal User user) {
+        // Delete avatar from S3 if exists
+        if (user.getAvatarUrl() != null) {
+            storageService.deleteFile(user.getAvatarUrl());
+        }
         String userId = user.getId();
         if (userId != null) {
             userRepository.deleteById(userId);
+        }
+        return ResponseEntity.noContent().build();
+    }
+
+    // ── Avatar endpoints ────────────────────────────────────────────────
+
+    @Operation(summary = "Upload Avatar", description = "Upload or replace the current user's avatar. Accepts JPG, PNG and WebP images up to 5MB. Send null/empty to use default.")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Avatar uploaded successfully",
+                content = @Content(schema = @Schema(implementation = UploadResponseDTO.class))),
+        @ApiResponse(responseCode = "400", description = "Invalid file (wrong type or too large)"),
+        @ApiResponse(responseCode = "401", description = "Unauthorized")
+    })
+    @PutMapping(value = "/me/avatar", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<UploadResponseDTO> uploadAvatar(
+            @AuthenticationPrincipal User user,
+            @RequestParam("file") MultipartFile file
+    ) {
+        // Delete old avatar if exists
+        if (user.getAvatarUrl() != null) {
+            storageService.deleteFile(user.getAvatarUrl());
+        }
+
+        String fileUrl = storageService.uploadFile(file, AVATAR_FOLDER);
+        user.setAvatarUrl(fileUrl);
+        userRepository.save(user);
+
+        return ResponseEntity.ok(new UploadResponseDTO(fileUrl));
+    }
+
+    @Operation(summary = "Delete Avatar", description = "Remove the current user's avatar. The frontend should then display the default avatar.")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "204", description = "Avatar removed successfully"),
+        @ApiResponse(responseCode = "401", description = "Unauthorized")
+    })
+    @DeleteMapping("/me/avatar")
+    public ResponseEntity<Void> deleteAvatar(@AuthenticationPrincipal User user) {
+        if (user.getAvatarUrl() != null) {
+            storageService.deleteFile(user.getAvatarUrl());
+            user.setAvatarUrl(null);
+            userRepository.save(user);
         }
         return ResponseEntity.noContent().build();
     }
@@ -128,7 +183,8 @@ public class UserController {
             u.getId(),
             u.getName(),
             u.getUsername(),
-            u.getEmail()
+            u.getEmail(),
+            u.getAvatarUrl()
         ));
     }
 }

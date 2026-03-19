@@ -48,4 +48,10 @@ public class User implements Serializable {
      */
     @Column(nullable = false)
     private String provider = "local";
+
+    /**
+     * User avatar image URL (nullable = no custom avatar)
+     */
+    @Column(nullable = true)
+    private String avatarUrl;
 }
