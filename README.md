@@ -1,108 +1,213 @@
-# 📋 Task Manager API# Task Manager API# 📋 Task Manager API# 📋 Task Manager API# Task Manager API
+# TaskManagerAPI# 📋 Task Manager API# Task Manager API# 📋 Task Manager API# 📋 Task Manager API# Task Manager API
 
-[![Java](https://img.shields.io/badge/Java-17-ED8B00?style=flat&logo=openjdk&logoColor=white)](https://openjdk.org/)Java · Spring Boot · Spring Security · JWT · Redis · PostgreSQL · Docker · AWS SES · Google OAuth[![Java](https://img.shields.io/badge/Java-17-ED8B00?style=flat&logo=openjdk&logoColor=white)](https://openjdk.org/)[![Java](https://img.shields.io/badge/Java-17-ED8B00?style=flat&logo=openjdk&logoColor=white)](https://openjdk.org/)Java · Spring Boot · Spring Security · JWT · Redis · PostgreSQL · Docker · AWS SES
 
-[![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.5-6DB33F?style=flat&logo=springboot&logoColor=white)](https://spring.io/projects/spring-boot)
 
-[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?style=flat&logo=postgresql&logoColor=white)](https://www.postgresql.org/)---[![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.5-6DB33F?style=flat&logo=springboot&logoColor=white)](https://spring.io/projects/spring-boot)
+RESTful API for task management built with [Spring Boot](https://spring.io/projects/spring-boot) 3.5 and Java 17.[![Java](https://img.shields.io/badge/Java-17-ED8B00?style=flat&logo=openjdk&logoColor=white)](https://openjdk.org/)Java · Spring Boot · Spring Security · JWT · Redis · PostgreSQL · Docker · AWS SES · Google OAuth[![Java](https://img.shields.io/badge/Java-17-ED8B00?style=flat&logo=openjdk&logoColor=white)](https://openjdk.org/)[![Java](https://img.shields.io/badge/Java-17-ED8B00?style=flat&logo=openjdk&logoColor=white)](https://openjdk.org/)Java · Spring Boot · Spring Security · JWT · Redis · PostgreSQL · Docker · AWS SES
 
-[![Redis](https://img.shields.io/badge/Redis-7-DC382D?style=flat&logo=redis&logoColor=white)](https://redis.io/)
 
-[![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)## Passo a passo[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?style=flat&logo=postgresql&logoColor=white)](https://www.postgresql.org/)[![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.5-6DB33F?style=flat&logo=springboot&logoColor=white)](https://spring.io/projects/spring-boot)
 
-A production-ready **RESTful API** for task management built with Spring Boot. Features JWT + refresh token authentication, Google OAuth 2.0, workspace/board/list/card hierarchy, real-time member collaboration, HTML email notifications via AWS SES, and comprehensive audit logging.**1 — Instale o Docker**[![Redis](https://img.shields.io/badge/Redis-7-DC382D?style=flat&logo=redis&logoColor=white)](https://redis.io/)
+## Prerequisites[![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.5-6DB33F?style=flat&logo=springboot&logoColor=white)](https://spring.io/projects/spring-boot)
 
----https://www.docker.com[![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?style=flat&logo=postgresql&logoColor=white)](https://www.postgresql.org/)---
 
-## 🏗️ Architecture**2 — Configure o ambiente**A production-ready **RESTful API** for task management built with Spring Boot. Features JWT + refresh token authentication, Google OAuth 2.0, workspace/board/list/card hierarchy, real-time member collaboration, HTML email notifications, and comprehensive audit logging.[![Redis](https://img.shields.io/badge/Redis-7-DC382D?style=flat&logo=redis&logoColor=white)](https://redis.io/)
 
-````````Copie o arquivo de exemplo e preencha com seus valores:---[![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)<!-- Add your architecture diagram image here -->
+- [Docker](https://www.docker.com/) installed and running[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?style=flat&logo=postgresql&logoColor=white)](https://www.postgresql.org/)---[![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.5-6DB33F?style=flat&logo=springboot&logoColor=white)](https://spring.io/projects/spring-boot)
 
-┌──────────────┐       ┌──────────────┐       ┌──────────────┐
+- Java 17+
+
+- AWS account with SES configured (for email features)[![Redis](https://img.shields.io/badge/Redis-7-DC382D?style=flat&logo=redis&logoColor=white)](https://redis.io/)
+
+
+
+## Running infrastructure[![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)## Passo a passo[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?style=flat&logo=postgresql&logoColor=white)](https://www.postgresql.org/)[![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.5-6DB33F?style=flat&logo=springboot&logoColor=white)](https://spring.io/projects/spring-boot)
+
+
+
+Start PostgreSQL and Redis with Docker Compose:A production-ready **RESTful API** for task management built with Spring Boot. Features JWT + refresh token authentication, Google OAuth 2.0, workspace/board/list/card hierarchy, real-time member collaboration, HTML email notifications via AWS SES, and comprehensive audit logging.**1 — Instale o Docker**[![Redis](https://img.shields.io/badge/Redis-7-DC382D?style=flat&logo=redis&logoColor=white)](https://redis.io/)
+
+
+
+```bash---https://www.docker.com[![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?style=flat&logo=postgresql&logoColor=white)](https://www.postgresql.org/)---
+
+docker-compose up -d
+
+```## 🏗️ Architecture**2 — Configure o ambiente**A production-ready **RESTful API** for task management built with Spring Boot. Features JWT + refresh token authentication, Google OAuth 2.0, workspace/board/list/card hierarchy, real-time member collaboration, HTML email notifications, and comprehensive audit logging.[![Redis](https://img.shields.io/badge/Redis-7-DC382D?style=flat&logo=redis&logoColor=white)](https://redis.io/)
+
+
+
+| Service    | Port |````````Copie o arquivo de exemplo e preencha com seus valores:---[![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)<!-- Add your architecture diagram image here -->
+
+| ---------- | ---- |
+
+| PostgreSQL | 5432 |┌──────────────┐       ┌──────────────┐       ┌──────────────┐
+
+| Redis      | 6379 |
 
 │   Frontend   │◄─────►│  Spring Boot │◄─────►│  PostgreSQL  │```````bash## 🏗️ Architecture<!-- ![Diagram](diagram.png) -->
 
+## Configuration
+
 │   (Client)   │  REST │     API      │  JPA  │   Database   │
+
+Copy the example properties file and fill in your values:
 
 └──────────────┘       └──────┬───────┘       └──────────────┘cp src/main/resources/application-example.properties src/main/resources/application.properties
 
-                              │
+```bash
+
+cp src/main/resources/application-example.properties src/main/resources/application.properties                              │
+
+```
 
                     ┌─────────┼─────────┐``````A production-ready **RESTful API** for task management built with Spring Boot. Features JWT + refresh token authentication, Google OAuth 2.0, workspace/board/list/card hierarchy, real-time member collaboration, HTML email notifications, and comprehensive audit logging.
 
+Edit `application.properties` with your credentials:
+
                     │         │         │
 
-               ┌────▼───┐ ┌──▼───┐ ┌───▼────┐
+- JWT secret key
 
-               │ Redis  │ │ AWS  │ │ Google │
+- AWS SES access key and secret               ┌────▼───┐ ┌──▼───┐ ┌───▼────┐
 
-               │ Cache  │ │ SES  │ │ OAuth  │Edite `application.properties` com suas credenciais (JWT secret, AWS SES keys, Google Client ID).┌──────────────┐       ┌──────────────┐       ┌──────────────┐
+- Google OAuth Client ID
 
-               └────────┘ └──────┘ └────────┘
+- Frontend URL               │ Redis  │ │ AWS  │ │ Google │
 
-````````
 
-### Module Structure**3 — Suba a infraestrutura**│ Angular │◄─────►│ Spring Boot │◄─────►│ PostgreSQL │---
+
+## Running the application               │ Cache  │ │ SES  │ │ OAuth  │Edite `application.properties` com suas credenciais (JWT secret, AWS SES keys, Google Client ID).┌──────────────┐       ┌──────────────┐       ┌──────────────┐
+
+
+
+```bash               └────────┘ └──────┘ └────────┘
+
+./mvnw spring-boot:run
+
+```````````
+
+
+
+The API will be available at `http://localhost:8080`.### Module Structure**3 — Suba a infraestrutura**│ Angular │◄─────►│ Spring Boot │◄─────►│ PostgreSQL │---
+
+
+
+Navigate to `http://localhost:8080/swagger-ui.html` for interactive API documentation.````
+
+
+
+## Buildingsrc/main/java/com/example/taskmanagerapi/
+
+
+
+To build the project:├── config/          # OpenAPI & Redis configuration```bash│  (Frontend)  │  REST │     API      │  JPA  │   Database   │
+
+
+
+```bash├── infra/
+
+./mvnw clean package
+
+```│   ├── cors/        # CORS policydocker-compose up -d
+
+
+
+This will compile, run tests, and generate a JAR in the `target/` directory.│   ├── exception/   # Global exception handler
+
+
+
+To run the built JAR:│   └── security/    # JWT filter, token service, security config```└──────────────┘       └──────┬───────┘       └──────────────┘---
+
+
+
+```bash└── modules/
+
+java -jar target/task-manager-api-0.0.1-SNAPSHOT.jar
+
+```    ├── auth/        # Authentication, users, email, audit
+
+
+
+## Running with Docker    ├── workspaces/  # Workspace CRUD + members
+
+
+
+Build and run the application container:    ├── boards/      # Board CRUD + membersApós executar, os seguintes serviços estarão disponíveis:                              │
+
+
+
+```bash    ├── lists/       # List (column) CRUD
+
+docker build -t task-manager-api .
+
+docker run -p 8080:8080 task-manager-api    └── cards/       # Card CRUD + drag-and-drop
+
+```
 
 ````
 
-src/main/java/com/example/taskmanagerapi/
-
-├── config/          # OpenAPI & Redis configuration```bash│  (Frontend)  │  REST │     API      │  JPA  │   Database   │
-
-├── infra/
-
-│   ├── cors/        # CORS policydocker-compose up -d
-
-│   ├── exception/   # Global exception handler
-
-│   └── security/    # JWT filter, token service, security config```└──────────────┘       └──────┬───────┘       └──────────────┘---
-
-└── modules/
-
-    ├── auth/        # Authentication, users, email, audit
-
-    ├── workspaces/  # Workspace CRUD + members
-
-    ├── boards/      # Board CRUD + membersApós executar, os seguintes serviços estarão disponíveis:                              │
-
-    ├── lists/       # List (column) CRUD
-
-    └── cards/       # Card CRUD + drag-and-drop
-
-````
+## Project structure
 
 | Serviço | Porta | URL | ┌─────────┼─────────┐## Setup
 
----
+```
 
-| ---------- | ----- | ------------------------------------- |
+src/main/java/com/example/taskmanagerapi/---
 
-## ✨ Features
+├── config/             # OpenAPI, Redis configuration
 
-| API | 8080 | http://localhost:8080 | │ │ │
+├── infra/| ---------- | ----- | ------------------------------------- |
 
-| Category | Details |
+│   ├── cors/           # CORS policy
 
-| ---------------------- | ------------------------------------------------------------------ || Swagger UI | 8080 | http://localhost:8080/swagger-ui.html |
+│   ├── exception/      # Global exception handler## ✨ Features
 
-| **Authentication** | JWT access tokens (4h) + refresh tokens (7d, Redis-cached) |
+│   └── security/       # JWT, authentication filter
 
-| **Google OAuth** | One-click sign-in with automatic account creation || PostgreSQL | 5432 | localhost:5432 | ┌────▼───┐ ┌──▼───┐ ┌───▼────┐## 🏗️ Architecture
+└── modules/| API | 8080 | http://localhost:8080 | │ │ │
 
-| **Email Verification** | HTML email templates via AWS SES + Thymeleaf |
+    ├── auth/           # Authentication, users, email, audit logs
 
-| **Password Reset** | Secure token-based flow with 30-minute expiry || Redis | 6379 | localhost:6379 |
+    ├── workspaces/     # Workspaces + members| Category | Details |
 
-| **Workspaces** | Multi-workspace support with member roles (OWNER, MEMBER) |
+    ├── boards/         # Boards + members
 
-| **Boards** | Kanban boards within workspaces | │ Redis │ │ AWS │ │ Google │
+    ├── lists/          # Lists (columns)| ---------------------- | ------------------------------------------------------------------ || Swagger UI | 8080 | http://localhost:8080/swagger-ui.html |
 
-| **Lists** | Ordered columns with drag-and-drop reordering |
+    └── cards/          # Cards
 
-| **Cards** | Cards with status (ACTIVE, ARCHIVED, COMPLETED) + cross-list moves |**Conexão PostgreSQL:**
+```| **Authentication** | JWT access tokens (4h) + refresh tokens (7d, Redis-cached) |
 
-| **Members** | Workspace & board-level access control with HTML invite emails |
+
+
+## Features| **Google OAuth** | One-click sign-in with automatic account creation || PostgreSQL | 5432 | localhost:5432 | ┌────▼───┐ ┌──▼───┐ ┌───▼────┐## 🏗️ Architecture
+
+
+
+- JWT authentication with refresh tokens (Redis-cached)| **Email Verification** | HTML email templates via AWS SES + Thymeleaf |
+
+- Google OAuth 2.0 sign-in
+
+- Email verification and password reset via AWS SES| **Password Reset** | Secure token-based flow with 30-minute expiry || Redis | 6379 | localhost:6379 |
+
+- HTML email templates with Thymeleaf
+
+- Workspace → Board → List → Card hierarchy| **Workspaces** | Multi-workspace support with member roles (OWNER, MEMBER) |
+
+- Member system with role-based access (Owner / Member)
+
+- Audit logging| **Boards** | Kanban boards within workspaces | │ Redis │ │ AWS │ │ Google │
+
+- Optional pagination
+
+- Swagger/OpenAPI documentation| **Lists** | Ordered columns with drag-and-drop reordering |
+
+
+
+## Further help| **Cards** | Cards with status (ACTIVE, ARCHIVED, COMPLETED) + cross-list moves |**Conexão PostgreSQL:**
+
+
+
+See [DOCUMENTATION.md](DOCUMENTATION.md) for detailed API endpoints and usage examples.| **Members** | Workspace & board-level access control with HTML invite emails |
+
 
 | **Pagination** | Optional pagination on listing endpoints (`?page=0&size=20`) | │ Cache │ │ SES │ │ OAuth │**1 — Install Docker**
 
