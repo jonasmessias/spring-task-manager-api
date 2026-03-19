@@ -8,49 +8,51 @@
 │   (Client)   │  REST │     API      │  JPA  │   Database   │
 └──────────────┘       └──────┬───────┘       └──────────────┘
                               │
-                    ┌─────────┼─────────┐
-                    │         │         │
-               ┌────▼───┐ ┌──▼───┐ ┌───▼────┐
-               │ Redis  │ │ AWS  │ │ Google │
-               │ Cache  │ │ SES  │ │ OAuth  │
-               └────────┘ └──────┘ └────────┘
+                    ┌─────────┼─────────┬──────────┐
+                    │         │         │          │
+               ┌────▼───┐ ┌──▼───┐ ┌───▼────┐ ┌───▼───┐
+               │ Redis  │ │ AWS  │ │ Google │ │ AWS   │
+               │ Cache  │ │ SES  │ │ OAuth  │ │  S3   │
+               └────────┘ └──────┘ └────────┘ └───────┘
 ```
 
 ### Module Structure
 
 ```
 src/main/java/com/example/taskmanagerapi/
-├── config/          # OpenAPI, Redis configuration
+├── config/          # OpenAPI, Redis, AWS S3 configuration
 ├── infra/
 │   ├── cors/        # CORS policy (restricted origins)
 │   ├── exception/   # Global exception handler
 │   └── security/    # JWT filter, token service, security config
 └── modules/
     ├── auth/        # Authentication, users, email, audit
-    ├── workspaces/  # Workspace CRUD + members
-    ├── boards/      # Board CRUD + members
+    ├── workspaces/  # Workspace CRUD + members + covers
+    ├── boards/      # Board CRUD + members + covers
     ├── lists/       # List (column) CRUD
-    └── cards/       # Card CRUD + drag-and-drop
+    ├── cards/       # Card CRUD + drag-and-drop + attachments
+    └── storage/     # AWS S3 file upload (direct + presigned URLs)
 ```
 
 ---
 
 ## Tech Stack
 
-| Technology        | Purpose                         |
-| ----------------- | ------------------------------- |
-| Java 17           | Language                        |
-| Spring Boot 3.5   | Framework                       |
-| Spring Security   | Authentication & authorization  |
-| JWT (java-jwt)    | Access token (4h expiry)        |
-| Redis 7           | Refresh token caching (7d)      |
-| PostgreSQL 16     | Primary database                |
-| AWS SES           | Transactional email (HTML)      |
-| Thymeleaf         | HTML email templates            |
-| Google OAuth 2.0  | Social login                    |
-| Springdoc OpenAPI | Swagger UI documentation        |
-| Docker Compose    | Infrastructure containerization |
-| Lombok            | Boilerplate reduction           |
+| Technology        | Purpose                                |
+| ----------------- | -------------------------------------- |
+| Java 17           | Language                               |
+| Spring Boot 3.5   | Framework                              |
+| Spring Security   | Authentication & authorization         |
+| JWT (java-jwt)    | Access token (4h expiry)               |
+| Redis 7           | Refresh token caching (7d)             |
+| PostgreSQL 16     | Primary database                       |
+| AWS SES           | Transactional email (HTML)             |
+| AWS S3            | File storage (avatars, covers, files)  |
+| Thymeleaf         | HTML email templates                   |
+| Google OAuth 2.0  | Social login                           |
+| Springdoc OpenAPI | Swagger UI documentation               |
+| Docker Compose    | Infrastructure containerization        |
+| Lombok            | Boilerplate reduction                  |
 
 ---
 
@@ -278,22 +280,26 @@ If the user does not exist, a new account is created automatically with email al
 
 ### Users
 
-| Method | Path        | Auth | Status (success) | Description                     |
-| ------ | ----------- | ---- | ---------------- | ------------------------------- |
-| GET    | /users/me   | Yes  | 200              | Get current authenticated user  |
-| PUT    | /users/me   | Yes  | 200              | Update profile (name, username) |
-| DELETE | /users/me   | Yes  | 204              | Delete own account              |
-| GET    | /users/{id} | Yes  | 200              | Get user by ID                  |
+| Method | Path             | Auth | Status (success) | Description                     |
+| ------ | ---------------- | ---- | ---------------- | ------------------------------- |
+| GET    | /users/me        | Yes  | 200              | Get current authenticated user  |
+| PUT    | /users/me        | Yes  | 200              | Update profile (name, username) |
+| DELETE | /users/me        | Yes  | 204              | Delete own account              |
+| PUT    | /users/me/avatar | Yes  | 200              | Upload or replace avatar        |
+| DELETE | /users/me/avatar | Yes  | 204              | Remove avatar                   |
+| GET    | /users/{id}      | Yes  | 200              | Get user by ID                  |
 
 ### Workspaces
 
-| Method | Path             | Auth | Status (success) | Description                          |
-| ------ | ---------------- | ---- | ---------------- | ------------------------------------ |
-| POST   | /workspaces      | Yes  | 201              | Create workspace                     |
-| GET    | /workspaces      | Yes  | 200              | List all workspaces                  |
-| GET    | /workspaces/{id} | Yes  | 200              | Get workspace with boards            |
-| PUT    | /workspaces/{id} | Yes  | 200              | Update workspace                     |
-| DELETE | /workspaces/{id} | Yes  | 204              | Delete workspace and all its content |
+| Method | Path                  | Auth | Status (success) | Description                          |
+| ------ | --------------------- | ---- | ---------------- | ------------------------------------ |
+| POST   | /workspaces           | Yes  | 201              | Create workspace                     |
+| GET    | /workspaces           | Yes  | 200              | List all workspaces                  |
+| GET    | /workspaces/{id}      | Yes  | 200              | Get workspace with boards            |
+| PUT    | /workspaces/{id}      | Yes  | 200              | Update workspace                     |
+| DELETE | /workspaces/{id}      | Yes  | 204              | Delete workspace and all its content |
+| PUT    | /workspaces/{id}/cover | Yes | 200              | Upload or replace workspace cover    |
+| DELETE | /workspaces/{id}/cover | Yes | 204              | Remove workspace cover               |
 
 ### Workspace Members
 
@@ -312,6 +318,8 @@ If the user does not exist, a new account is created automatically with email al
 | GET    | /boards/{id}             | Yes  | 200              | Get board with lists and cards   |
 | PUT    | /boards/{id}             | Yes  | 200              | Update board                     |
 | DELETE | /boards/{id}             | Yes  | 204              | Delete board and all its content |
+| PUT    | /boards/{id}/cover       | Yes  | 200              | Upload or replace board cover    |
+| DELETE | /boards/{id}/cover       | Yes  | 204              | Remove board cover               |
 
 ### Board Members
 
@@ -343,6 +351,104 @@ If the user does not exist, a new account is created automatically with email al
 | DELETE | /boards/{boardId}/lists/{listId}/cards/{cardId}      | Yes  | 204              | Delete card                   |
 
 Card status values: `ACTIVE`, `ARCHIVED`, `COMPLETED`.
+
+### Attachments
+
+| Method | Path                                          | Auth | Status (success) | Description                            |
+| ------ | --------------------------------------------- | ---- | ---------------- | -------------------------------------- |
+| POST   | /cards/{cardId}/attachments/request-upload     | Yes  | 200              | Get presigned URL for direct S3 upload |
+| POST   | /cards/{cardId}/attachments/confirm            | Yes  | 201              | Confirm upload and save metadata       |
+| GET    | /cards/{cardId}/attachments                    | Yes  | 200              | List all attachments for a card        |
+| DELETE | /cards/{cardId}/attachments/{attachmentId}     | Yes  | 204              | Delete attachment from S3 and database |
+
+### Storage
+
+| Method | Path                     | Auth | Status (success) | Description                              |
+| ------ | ------------------------ | ---- | ---------------- | ---------------------------------------- |
+| POST   | /storage/upload          | Yes  | 201              | Direct file upload (images up to 5MB)    |
+| POST   | /storage/presigned-upload | Yes | 200              | Get presigned URL for large file upload  |
+| DELETE | /storage?fileUrl=        | Yes  | 204              | Delete a file from S3 by URL or key      |
+
+---
+
+## File Storage (AWS S3)
+
+The API uses AWS S3 for all file storage with two upload strategies:
+
+### Upload Strategies
+
+| Strategy       | Use Case                | Max Size | Flow                                |
+| -------------- | ----------------------- | -------- | ----------------------------------- |
+| Direct Upload  | Avatars, covers (small) | 5 MB     | Client → API → S3                   |
+| Presigned URL  | Card attachments (large)| 50 MB    | API generates URL → Client → S3 directly |
+
+### Allowed Image Types (Direct Upload)
+
+- `image/jpeg`, `image/png`, `image/webp`
+
+### Blocked Extensions (Attachments)
+
+- `.exe`, `.bat`, `.cmd`, `.sh`, `.ps1`, `.msi`, `.dll`, `.com`
+
+### S3 Folder Structure
+
+```
+bucket/
+├── avatars/               # User profile images
+├── covers/
+│   ├── boards/            # Board cover images
+│   └── workspaces/        # Workspace cover images
+└── attachments/           # Card file attachments
+```
+
+### Default Images
+
+All image fields (`avatarUrl`, `coverUrl`) are **nullable**. A `null` value means no custom image has been set — the frontend should render a default placeholder.
+
+### Attachment Upload Flow (Presigned URL)
+
+```
+┌────────┐                    ┌────────┐                    ┌─────┐
+│ Client │                    │  API   │                    │ S3  │
+└───┬────┘                    └───┬────┘                    └──┬──┘
+    │ POST /cards/{id}/           │                            │
+    │   attachments/request-upload│                            │
+    │ {fileName, contentType,     │                            │
+    │  fileSize}                  │                            │
+    │────────────────────────────►│                            │
+    │                             │  Generate presigned URL    │
+    │  {uploadUrl, fileKey,       │                            │
+    │   fileUrl}                  │                            │
+    │◄────────────────────────────│                            │
+    │                             │                            │
+    │  PUT uploadUrl              │                            │
+    │  (binary file body)         │                            │
+    │─────────────────────────────┼───────────────────────────►│
+    │  200 OK                     │                            │
+    │◄────────────────────────────┼────────────────────────────│
+    │                             │                            │
+    │ POST /cards/{id}/           │                            │
+    │   attachments/confirm       │                            │
+    │ {fileKey, fileName,         │                            │
+    │  contentType, fileSize}     │                            │
+    │────────────────────────────►│                            │
+    │  201 Created                │                            │
+    │  {id, fileName, fileUrl...} │                            │
+    │◄────────────────────────────│                            │
+```
+
+### S3 Cleanup
+
+All S3 files are automatically cleaned up when their parent resource is deleted:
+
+| Deletion Trigger     | Files Cleaned                                       |
+| -------------------- | --------------------------------------------------- |
+| Delete user account  | User avatar                                         |
+| Delete workspace     | Workspace cover + all board covers + all attachments |
+| Delete board         | Board cover + all card attachments in the board      |
+| Delete list          | All card attachments in the list                     |
+| Delete card          | All card attachments                                 |
+| Delete attachment    | Single file from S3                                  |
 
 ---
 
@@ -425,6 +531,73 @@ Authorization: Bearer <access_token>
 { "targetListId": "<target_list_id>", "position": 0 }
 ```
 
+**Upload a user avatar**
+
+```
+PUT /users/me/avatar
+Authorization: Bearer <access_token>
+Content-Type: multipart/form-data
+```
+
+Form data: `file` = JPG/PNG/WebP image (max 5MB)
+
+**Upload a board cover**
+
+```
+PUT /boards/<board_id>/cover
+Authorization: Bearer <access_token>
+Content-Type: multipart/form-data
+```
+
+Form data: `file` = JPG/PNG/WebP image (max 5MB)
+
+**Attach a file to a card (presigned URL flow)**
+
+Step 1 — Request upload URL:
+
+```
+POST /cards/<card_id>/attachments/request-upload
+Authorization: Bearer <access_token>
+```
+
+```json
+{ "fileName": "report.pdf", "contentType": "application/pdf", "fileSize": 2048000 }
+```
+
+Response `200 OK`:
+
+```json
+{
+  "uploadUrl": "https://bucket.s3.amazonaws.com/attachments/uuid.pdf?X-Amz-...",
+  "fileKey": "attachments/uuid.pdf",
+  "fileUrl": "https://bucket.s3.region.amazonaws.com/attachments/uuid.pdf"
+}
+```
+
+Step 2 — Upload file directly to S3:
+
+```
+PUT <uploadUrl from step 1>
+Content-Type: application/pdf
+Body: <binary file>
+```
+
+Step 3 — Confirm upload:
+
+```
+POST /cards/<card_id>/attachments/confirm
+Authorization: Bearer <access_token>
+```
+
+```json
+{
+  "fileKey": "attachments/uuid.pdf",
+  "fileName": "report.pdf",
+  "contentType": "application/pdf",
+  "fileSize": 2048000
+}
+```
+
 ---
 
 ## Error Responses
@@ -471,14 +644,15 @@ All errors follow the format:
 
 ### Resource errors
 
-| Code                  | HTTP Status | Description         |
-| --------------------- | ----------- | ------------------- |
-| `WORKSPACE_NOT_FOUND` | 404         | Workspace not found |
-| `BOARD_NOT_FOUND`     | 404         | Board not found     |
-| `LIST_NOT_FOUND`      | 404         | List not found      |
-| `CARD_NOT_FOUND`      | 404         | Card not found      |
-| `FORBIDDEN`           | 403         | Insufficient access |
-| `INVALID_MOVE`        | 400         | Invalid card move   |
+| Code                  | HTTP Status | Description                          |
+| --------------------- | ----------- | ------------------------------------ |
+| `WORKSPACE_NOT_FOUND` | 404         | Workspace not found                  |
+| `BOARD_NOT_FOUND`     | 404         | Board not found                      |
+| `LIST_NOT_FOUND`      | 404         | List not found                       |
+| `CARD_NOT_FOUND`      | 404         | Card not found                       |
+| `FORBIDDEN`           | 403         | Insufficient access                  |
+| `INVALID_MOVE`        | 400         | Invalid card move                    |
+| `BAD_REQUEST`         | 400         | Invalid file type, size, or argument |
 
 ### Validation error format
 
@@ -493,4 +667,4 @@ All errors follow the format:
 
 ---
 
-_Last updated: March 18, 2026_
+_Last updated: March 19, 2026_

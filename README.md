@@ -37,6 +37,10 @@ Update the following properties in `application.properties`:
 | `aws.ses.access-key`        | AWS SES access key                 |
 | `aws.ses.secret-key`        | AWS SES secret key                 |
 | `aws.ses.from`              | Verified sender email in AWS SES   |
+| `aws.s3.access-key`         | AWS S3 access key                  |
+| `aws.s3.secret-key`         | AWS S3 secret key                  |
+| `aws.s3.bucket-name`        | S3 bucket name for file storage    |
+| `aws.s3.region`             | AWS region for S3 bucket           |
 | `google.client-id`          | Google OAuth 2.0 client ID         |
 | `app.frontend.url`          | Frontend URL for CORS (dev)        |
 | `app.frontend.prod-url`     | Frontend URL for CORS (production) |
@@ -81,35 +85,37 @@ The interactive Swagger UI lets you explore and test all available endpoints.
 
 ```
 src/main/java/com/example/taskmanagerapi/
-├── config/              # OpenAPI, Redis, AWS SES configuration
+├── config/              # OpenAPI, Redis, AWS SES, AWS S3 configuration
 ├── infra/
 │   ├── cors/            # CORS policy
 │   ├── exception/       # Global exception handler
 │   └── security/        # JWT filter, token service, security config
 └── modules/
     ├── auth/            # Authentication, users, email verification
-    ├── workspaces/      # Workspace CRUD + members
-    ├── boards/          # Board CRUD + members
+    ├── workspaces/      # Workspace CRUD + members + covers
+    ├── boards/          # Board CRUD + members + covers
     ├── lists/           # List (column) CRUD
-    └── cards/           # Card CRUD + drag-and-drop reordering
+    ├── cards/           # Card CRUD + drag-and-drop + attachments
+    └── storage/         # AWS S3 file upload (direct + presigned URLs)
 ```
 
 ## Tech Stack
 
-| Technology        | Purpose                         |
-| ----------------- | ------------------------------- |
-| Java 17           | Language                        |
-| Spring Boot 3.5   | Framework                       |
-| Spring Security   | Authentication & authorization  |
-| JWT (java-jwt)    | Access token (4h expiry)        |
-| PostgreSQL 16     | Primary database                |
-| Redis 7           | Refresh token caching (7d TTL)  |
-| AWS SES           | Transactional emails (HTML)     |
-| Google OAuth 2.0  | Social login                    |
-| Thymeleaf         | HTML email templates            |
-| Springdoc OpenAPI | Swagger UI documentation        |
-| Docker Compose    | Infrastructure containerization |
-| Lombok            | Boilerplate reduction           |
+| Technology        | Purpose                                |
+| ----------------- | -------------------------------------- |
+| Java 17           | Language                               |
+| Spring Boot 3.5   | Framework                              |
+| Spring Security   | Authentication & authorization         |
+| JWT (java-jwt)    | Access token (4h expiry)               |
+| PostgreSQL 16     | Primary database                       |
+| Redis 7           | Refresh token caching (7d TTL)         |
+| AWS SES           | Transactional emails (HTML)            |
+| AWS S3            | File storage (avatars, covers, files)  |
+| Google OAuth 2.0  | Social login                           |
+| Thymeleaf         | HTML email templates                   |
+| Springdoc OpenAPI | Swagger UI documentation               |
+| Docker Compose    | Infrastructure containerization        |
+| Lombok            | Boilerplate reduction                  |
 
 ## Running Tests
 
