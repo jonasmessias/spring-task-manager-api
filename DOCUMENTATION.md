@@ -1,6 +1,6 @@
-# Task Manager API — Technical Documentation
+# Task Manager API — Documentação Técnica
 
-## Architecture
+## Arquitetura
 
 ```
 ┌──────────────┐       ┌──────────────┐       ┌──────────────┐
@@ -16,47 +16,47 @@
                └────────┘ └──────┘ └────────┘ └───────┘
 ```
 
-### Module Structure
+### Estrutura dos Módulos
 
 ```
 src/main/java/com/example/taskmanagerapi/
-├── config/          # OpenAPI, Redis, AWS S3 configuration
+├── config/          # Configuração OpenAPI, Redis, AWS S3
 ├── infra/
-│   ├── cors/        # CORS policy (restricted origins)
-│   ├── exception/   # Global exception handler
-│   └── security/    # JWT filter, token service, security config
+│   ├── cors/        # Política de CORS (origens restritas)
+│   ├── exception/   # Tratamento global de exceções
+│   └── security/    # Filtro JWT, serviço de token, configuração de segurança
 └── modules/
-    ├── auth/        # Authentication, users, email, audit
-    ├── workspaces/  # Workspace CRUD + members + covers
-    ├── boards/      # Board CRUD + members + covers
-    ├── lists/       # List (column) CRUD
-    ├── cards/       # Card CRUD + drag-and-drop + attachments
-    └── storage/     # AWS S3 file upload (direct + presigned URLs)
+    ├── auth/        # Autenticação, usuários, e-mail, auditoria
+    ├── workspaces/  # CRUD de Workspaces + membros + capas
+    ├── boards/      # CRUD de Boards + membros + capas
+    ├── lists/       # CRUD de Listas (colunas)
+    ├── cards/       # CRUD de Cards + drag-and-drop + anexos
+    └── storage/     # Upload de arquivos AWS S3 (direto + URLs pré-assinadas)
 ```
 
 ---
 
-## Tech Stack
+## Stack Tecnológica
 
-| Technology        | Purpose                                |
-| ----------------- | -------------------------------------- |
-| Java 17           | Language                               |
-| Spring Boot 3.5   | Framework                              |
-| Spring Security   | Authentication & authorization         |
-| JWT (java-jwt)    | Access token (4h expiry)               |
-| Redis 7           | Refresh token caching (7d)             |
-| PostgreSQL 16     | Primary database                       |
-| AWS SES           | Transactional email (HTML)             |
-| AWS S3            | File storage (avatars, covers, files)  |
-| Thymeleaf         | HTML email templates                   |
-| Google OAuth 2.0  | Social login                           |
-| Springdoc OpenAPI | Swagger UI documentation               |
-| Docker Compose    | Infrastructure containerization        |
-| Lombok            | Boilerplate reduction                  |
+| Tecnologia        | Finalidade                                 |
+| ----------------- | ------------------------------------------ |
+| Java 17           | Linguagem                                  |
+| Spring Boot 3.5   | Framework                                  |
+| Spring Security   | Autenticação e autorização                 |
+| JWT (java-jwt)    | Token de acesso (expiração de 4h)          |
+| Redis 7           | Cache de refresh tokens (7 dias)           |
+| PostgreSQL 16     | Banco de dados principal                   |
+| AWS SES           | E-mails transacionais (HTML)               |
+| AWS S3            | Armazenamento de arquivos (avatares, capas)|
+| Thymeleaf         | Templates de e-mail HTML                   |
+| Google OAuth 2.0  | Login social                               |
+| Springdoc OpenAPI | Documentação Swagger UI                    |
+| Docker Compose    | Containerização da infraestrutura          |
+| Lombok            | Redução de boilerplate                     |
 
 ---
 
-## Authentication Flow
+## Fluxo de Autenticação
 
 ```
 ┌────────┐                      ┌────────┐                    ┌───────┐
@@ -83,57 +83,57 @@ src/main/java/com/example/taskmanagerapi/
     │◄──────────────────────────────│                             │
 ```
 
-### Token Details
+### Detalhes dos Tokens
 
-- **Access token:** JWT signed with HMAC256, 4-hour expiry, carries user email as subject
-- **Refresh token:** UUID stored in PostgreSQL + cached in Redis with 7-day TTL
-- **Google OAuth:** Frontend sends Google ID token → API verifies via Google public keys → creates/retrieves local user
+- **Access token:** JWT assinado com HMAC256, expiração de 4 horas, carrega o e-mail do usuário como subject
+- **Refresh token:** UUID armazenado no PostgreSQL + cacheado no Redis com TTL de 7 dias
+- **Google OAuth:** Frontend envia Google ID token → API verifica via chaves públicas do Google → cria/recupera usuário local
 
-### Security
+### Segurança
 
-- `SecurityFilter` intercepts every request, validates JWT, sets `SecurityContext`
-- Public endpoints: `/auth/login`, `/auth/register`, `/auth/google`, `/auth/refresh`, `/auth/verify-email`, `/auth/resend-verification`, `/auth/forgot-password`, `/auth/reset-password`
-- All other endpoints require `Authorization: Bearer <token>`
-- CORS restricted to configured frontend URLs with `allowCredentials(true)`
-- Password reset invalidates **all** refresh tokens for the user
-
----
-
-## Email Templates
-
-HTML emails sent via AWS SES with Thymeleaf template engine:
-
-| Template                  | Trigger                    | Token Expiry |
-| ------------------------- | -------------------------- | ------------ |
-| `email-verification.html` | Registration, resend       | 24 hours     |
-| `password-reset.html`     | Forgot password            | 30 minutes   |
-| `member-invite.html`      | Workspace/board invitation | —            |
-
-Templates location: `src/main/resources/templates/`
+- `SecurityFilter` intercepta todas as requisições, valida o JWT e configura o `SecurityContext`
+- Endpoints públicos: `/auth/login`, `/auth/register`, `/auth/google`, `/auth/refresh`, `/auth/verify-email`, `/auth/resend-verification`, `/auth/forgot-password`, `/auth/reset-password`
+- Todos os outros endpoints requerem `Authorization: Bearer <token>`
+- CORS restrito às URLs de frontend configuradas com `allowCredentials(true)`
+- Redefinição de senha invalida **todos** os refresh tokens do usuário
 
 ---
 
-## Audit Logging
+## Templates de E-mail
 
-All authentication events are persisted to the `audit_logs` table:
+E-mails HTML enviados via AWS SES com motor de templates Thymeleaf:
 
-| Action           | Trigger                    | Severity |
-| ---------------- | -------------------------- | -------- |
-| `LOGIN`          | Successful login           | INFO     |
-| `REGISTER`       | New account created        | INFO     |
-| `LOGOUT`         | Single device logout       | INFO     |
-| `LOGOUT_ALL`     | Global logout              | WARN     |
-| `TOKEN_REFRESH`  | Access token refreshed     | INFO     |
-| `PASSWORD_RESET` | Password changed via reset | WARN     |
-| `EMAIL_VERIFIED` | Email verification success | INFO     |
+| Template                  | Gatilho                        | Expiração do Token |
+| ------------------------- | ------------------------------ | ------------------ |
+| `email-verification.html` | Registro, reenvio              | 24 horas           |
+| `password-reset.html`     | Esqueceu a senha               | 30 minutos         |
+| `member-invite.html`      | Convite para workspace/board   | —                  |
 
-Each record stores: action, email, IP address, user agent, details, timestamp.
+Localização dos templates: `src/main/resources/templates/`
 
 ---
 
-## Pagination
+## Log de Auditoria
 
-Optional pagination on listing endpoints — backward compatible:
+Todos os eventos de autenticação são persistidos na tabela `audit_logs`:
+
+| Ação             | Gatilho                        | Severidade |
+| ---------------- | ------------------------------ | ---------- |
+| `LOGIN`          | Login bem-sucedido             | INFO       |
+| `REGISTER`       | Nova conta criada              | INFO       |
+| `LOGOUT`         | Logout de dispositivo único    | INFO       |
+| `LOGOUT_ALL`     | Logout global                  | WARN       |
+| `TOKEN_REFRESH`  | Access token renovado          | INFO       |
+| `PASSWORD_RESET` | Senha alterada via redefinição | WARN       |
+| `EMAIL_VERIFIED` | Verificação de e-mail com sucesso | INFO    |
+
+Cada registro armazena: ação, e-mail, endereço IP, user agent, detalhes, timestamp.
+
+---
+
+## Paginação
+
+Paginação opcional nos endpoints de listagem — compatível com versões anteriores:
 
 ```
 GET /boards?workspaceId=xxx                        → List<BoardResponseDTO>
@@ -143,31 +143,31 @@ GET /boards/{id}/lists/{id}/cards                  → List<CardResponseDTO>
 GET /boards/{id}/lists/{id}/cards?page=0&size=50   → Page<CardResponseDTO>
 ```
 
-If `page` parameter is omitted, returns full list (no breaking change for existing clients).
+Se o parâmetro `page` for omitido, retorna a lista completa (sem quebrar clientes existentes).
 
 ---
 
-## Member System
+## Sistema de Membros
 
-Two-level access control:
+Controle de acesso em dois níveis:
 
-1. **Workspace members** — can see/create boards in the workspace
-2. **Board members** — can see/create lists and cards in the board
+1. **Membros do workspace** — podem visualizar/criar boards no workspace
+2. **Membros do board** — podem visualizar/criar listas e cards no board
 
-Rules:
+Regras:
 
-- To be invited to a **board**, user must already be a **workspace member**
-- Only the **owner** can invite/remove members
-- Owner cannot be removed
-- Invitation sends an HTML email notification
+- Para ser convidado a um **board**, o usuário já deve ser **membro do workspace**
+- Apenas o **proprietário** pode convidar/remover membros
+- O proprietário não pode ser removido
+- O convite envia uma notificação por e-mail HTML
 
 ---
 
-## Authentication Examples
+## Exemplos de Autenticação
 
-### Standard registration
+### Registro padrão
 
-**1 — Register an account**
+**1 — Criar uma conta**
 
 ```
 POST /auth/register
@@ -187,11 +187,11 @@ Response `201 Created`:
 
 ```json
 {
-  "message": "Registration successful! Please check your email to verify your account."
+  "message": "Registro realizado com sucesso! Verifique seu e-mail para ativar sua conta."
 }
 ```
 
-**2 — Verify your email**
+**2 — Verificar seu e-mail**
 
 ```
 POST /auth/verify-email
@@ -204,7 +204,7 @@ POST /auth/verify-email
 Response `200 OK`:
 
 ```json
-{ "message": "Email verified successfully! You can now log in." }
+{ "message": "E-mail verificado com sucesso! Agora você pode fazer login." }
 ```
 
 **3 — Login**
@@ -227,7 +227,7 @@ Response `200 OK`:
 }
 ```
 
-Access token expires in **4 hours**. Use the refresh token to get a new one:
+Access token expira em **4 horas**. Use o refresh token para obter um novo:
 
 ```
 POST /auth/refresh
@@ -237,7 +237,7 @@ POST /auth/refresh
 { "refreshToken": "<refresh_token>" }
 ```
 
-### Google OAuth login
+### Login com Google OAuth
 
 ```
 POST /auth/google
@@ -257,7 +257,7 @@ Response `200 OK`:
 }
 ```
 
-If the user does not exist, a new account is created automatically with email already verified. If a user registered with email/password tries to log in via Google with the same email, they will receive a `USE_GOOGLE_LOGIN` or `INVALID_CREDENTIALS` error depending on direction.
+Se o usuário não existir, uma nova conta é criada automaticamente com e-mail já verificado. Se um usuário registrado com e-mail/senha tentar fazer login via Google com o mesmo e-mail, receberá um erro `USE_GOOGLE_LOGIN` ou `INVALID_CREDENTIALS` dependendo da direção.
 
 ---
 
@@ -265,147 +265,147 @@ If the user does not exist, a new account is created automatically with email al
 
 ### Auth
 
-| Method | Path                      | Auth | Status (success) | Description                                                |
+| Método | Caminho                   | Auth | Status (sucesso) | Descrição                                                  |
 | ------ | ------------------------- | ---- | ---------------- | ---------------------------------------------------------- |
-| POST   | /auth/register            | No   | 201              | Create account and send verification email                 |
-| POST   | /auth/verify-email        | No   | 200              | Verify email with token from inbox                         |
-| POST   | /auth/resend-verification | No   | 200              | Resend verification email                                  |
-| POST   | /auth/login               | No   | 200              | Login, returns access + refresh token                      |
-| POST   | /auth/google              | No   | 200              | Login/register with Google ID token                        |
-| POST   | /auth/refresh             | No   | 200              | Get new access token using refresh token                   |
-| POST   | /auth/logout              | Yes  | 200              | Invalidate current session (requires refreshToken in body) |
-| POST   | /auth/logout-all          | Yes  | 200              | Invalidate all sessions                                    |
-| POST   | /auth/forgot-password     | No   | 200              | Send password reset email                                  |
-| POST   | /auth/reset-password      | No   | 200              | Reset password with token                                  |
+| POST   | /auth/register            | Não  | 201              | Criar conta e enviar e-mail de verificação                 |
+| POST   | /auth/verify-email        | Não  | 200              | Verificar e-mail com token recebido na caixa de entrada    |
+| POST   | /auth/resend-verification | Não  | 200              | Reenviar e-mail de verificação                             |
+| POST   | /auth/login               | Não  | 200              | Login, retorna access + refresh token                      |
+| POST   | /auth/google              | Não  | 200              | Login/registro com Google ID token                         |
+| POST   | /auth/refresh             | Não  | 200              | Obter novo access token usando refresh token               |
+| POST   | /auth/logout              | Sim  | 200              | Invalidar sessão atual (requer refreshToken no body)       |
+| POST   | /auth/logout-all          | Sim  | 200              | Invalidar todas as sessões                                 |
+| POST   | /auth/forgot-password     | Não  | 200              | Enviar e-mail de redefinição de senha                      |
+| POST   | /auth/reset-password      | Não  | 200              | Redefinir senha com token                                  |
 
-### Users
+### Users (Usuários)
 
-| Method | Path             | Auth | Status (success) | Description                     |
-| ------ | ---------------- | ---- | ---------------- | ------------------------------- |
-| GET    | /users/me        | Yes  | 200              | Get current authenticated user  |
-| PUT    | /users/me        | Yes  | 200              | Update profile (name, username) |
-| DELETE | /users/me        | Yes  | 204              | Delete own account              |
-| PUT    | /users/me/avatar | Yes  | 200              | Upload or replace avatar        |
-| DELETE | /users/me/avatar | Yes  | 204              | Remove avatar                   |
-| GET    | /users/{id}      | Yes  | 200              | Get user by ID                  |
+| Método | Caminho          | Auth | Status (sucesso) | Descrição                            |
+| ------ | ---------------- | ---- | ---------------- | ------------------------------------ |
+| GET    | /users/me        | Sim  | 200              | Obter usuário autenticado atual      |
+| PUT    | /users/me        | Sim  | 200              | Atualizar perfil (nome, username)    |
+| DELETE | /users/me        | Sim  | 204              | Excluir própria conta                |
+| PUT    | /users/me/avatar | Sim  | 200              | Enviar ou substituir avatar          |
+| DELETE | /users/me/avatar | Sim  | 204              | Remover avatar                       |
+| GET    | /users/{id}      | Sim  | 200              | Obter usuário por ID                 |
 
 ### Workspaces
 
-| Method | Path                  | Auth | Status (success) | Description                          |
-| ------ | --------------------- | ---- | ---------------- | ------------------------------------ |
-| POST   | /workspaces           | Yes  | 201              | Create workspace                     |
-| GET    | /workspaces           | Yes  | 200              | List all workspaces                  |
-| GET    | /workspaces/{id}      | Yes  | 200              | Get workspace with boards            |
-| PUT    | /workspaces/{id}      | Yes  | 200              | Update workspace                     |
-| DELETE | /workspaces/{id}      | Yes  | 204              | Delete workspace and all its content |
-| PUT    | /workspaces/{id}/cover | Yes | 200              | Upload or replace workspace cover    |
-| DELETE | /workspaces/{id}/cover | Yes | 204              | Remove workspace cover               |
+| Método | Caminho               | Auth | Status (sucesso) | Descrição                                    |
+| ------ | --------------------- | ---- | ---------------- | -------------------------------------------- |
+| POST   | /workspaces           | Sim  | 201              | Criar workspace                              |
+| GET    | /workspaces           | Sim  | 200              | Listar todos os workspaces                   |
+| GET    | /workspaces/{id}      | Sim  | 200              | Obter workspace com boards                   |
+| PUT    | /workspaces/{id}      | Sim  | 200              | Atualizar workspace                          |
+| DELETE | /workspaces/{id}      | Sim  | 204              | Excluir workspace e todo seu conteúdo        |
+| PUT    | /workspaces/{id}/cover | Sim | 200              | Enviar ou substituir capa do workspace       |
+| DELETE | /workspaces/{id}/cover | Sim | 204              | Remover capa do workspace                    |
 
-### Workspace Members
+### Membros do Workspace
 
-| Method | Path                              | Auth | Status (success) | Description                      |
-| ------ | --------------------------------- | ---- | ---------------- | -------------------------------- |
-| GET    | /workspaces/{id}/members          | Yes  | 200              | List all members                 |
-| POST   | /workspaces/{id}/members          | Yes  | 201              | Invite user by email or username |
-| DELETE | /workspaces/{id}/members/{userId} | Yes  | 200              | Remove member from workspace     |
+| Método | Caminho                           | Auth | Status (sucesso) | Descrição                             |
+| ------ | --------------------------------- | ---- | ---------------- | ------------------------------------- |
+| GET    | /workspaces/{id}/members          | Sim  | 200              | Listar todos os membros               |
+| POST   | /workspaces/{id}/members          | Sim  | 201              | Convidar usuário por e-mail ou username|
+| DELETE | /workspaces/{id}/members/{userId} | Sim  | 200              | Remover membro do workspace           |
 
 ### Boards
 
-| Method | Path                     | Auth | Status (success) | Description                      |
-| ------ | ------------------------ | ---- | ---------------- | -------------------------------- |
-| POST   | /boards?workspaceId={id} | Yes  | 201              | Create board in workspace        |
-| GET    | /boards?workspaceId={id} | Yes  | 200              | List boards from workspace       |
-| GET    | /boards/{id}             | Yes  | 200              | Get board with lists and cards   |
-| PUT    | /boards/{id}             | Yes  | 200              | Update board                     |
-| DELETE | /boards/{id}             | Yes  | 204              | Delete board and all its content |
-| PUT    | /boards/{id}/cover       | Yes  | 200              | Upload or replace board cover    |
-| DELETE | /boards/{id}/cover       | Yes  | 204              | Remove board cover               |
+| Método | Caminho                  | Auth | Status (sucesso) | Descrição                            |
+| ------ | ------------------------ | ---- | ---------------- | ------------------------------------ |
+| POST   | /boards?workspaceId={id} | Sim  | 201              | Criar board no workspace             |
+| GET    | /boards?workspaceId={id} | Sim  | 200              | Listar boards do workspace           |
+| GET    | /boards/{id}             | Sim  | 200              | Obter board com listas e cards       |
+| PUT    | /boards/{id}             | Sim  | 200              | Atualizar board                      |
+| DELETE | /boards/{id}             | Sim  | 204              | Excluir board e todo seu conteúdo    |
+| PUT    | /boards/{id}/cover       | Sim  | 200              | Enviar ou substituir capa do board   |
+| DELETE | /boards/{id}/cover       | Sim  | 204              | Remover capa do board                |
 
-### Board Members
+### Membros do Board
 
-| Method | Path                          | Auth | Status (success) | Description                           |
-| ------ | ----------------------------- | ---- | ---------------- | ------------------------------------- |
-| GET    | /boards/{id}/members          | Yes  | 200              | List all members                      |
-| POST   | /boards/{id}/members          | Yes  | 201              | Invite workspace member to this board |
-| DELETE | /boards/{id}/members/{userId} | Yes  | 200              | Remove member from board              |
+| Método | Caminho                       | Auth | Status (sucesso) | Descrição                                     |
+| ------ | ----------------------------- | ---- | ---------------- | --------------------------------------------- |
+| GET    | /boards/{id}/members          | Sim  | 200              | Listar todos os membros                       |
+| POST   | /boards/{id}/members          | Sim  | 201              | Convidar membro do workspace para este board  |
+| DELETE | /boards/{id}/members/{userId} | Sim  | 200              | Remover membro do board                       |
 
-### Lists
+### Listas
 
-| Method | Path                             | Auth | Status (success) | Description               |
-| ------ | -------------------------------- | ---- | ---------------- | ------------------------- |
-| POST   | /boards/{boardId}/lists          | Yes  | 201              | Create list               |
-| GET    | /boards/{boardId}/lists          | Yes  | 200              | Get all lists             |
-| GET    | /boards/{boardId}/lists/{listId} | Yes  | 200              | Get list                  |
-| PUT    | /boards/{boardId}/lists/{listId} | Yes  | 200              | Update list               |
-| DELETE | /boards/{boardId}/lists/{listId} | Yes  | 204              | Delete list and its cards |
+| Método | Caminho                          | Auth | Status (sucesso) | Descrição                     |
+| ------ | -------------------------------- | ---- | ---------------- | ----------------------------- |
+| POST   | /boards/{boardId}/lists          | Sim  | 201              | Criar lista                   |
+| GET    | /boards/{boardId}/lists          | Sim  | 200              | Obter todas as listas         |
+| GET    | /boards/{boardId}/lists/{listId} | Sim  | 200              | Obter lista                   |
+| PUT    | /boards/{boardId}/lists/{listId} | Sim  | 200              | Atualizar lista               |
+| DELETE | /boards/{boardId}/lists/{listId} | Sim  | 204              | Excluir lista e seus cards    |
 
 ### Cards
 
-| Method | Path                                                 | Auth | Status (success) | Description                   |
-| ------ | ---------------------------------------------------- | ---- | ---------------- | ----------------------------- |
-| POST   | /boards/{boardId}/lists/{listId}/cards               | Yes  | 201              | Create card                   |
-| GET    | /boards/{boardId}/lists/{listId}/cards               | Yes  | 200              | Get all cards                 |
-| GET    | /boards/{boardId}/lists/{listId}/cards/{cardId}      | Yes  | 200              | Get card                      |
-| PUT    | /boards/{boardId}/lists/{listId}/cards/{cardId}      | Yes  | 200              | Update card                   |
-| PATCH  | /boards/{boardId}/lists/{listId}/cards/{cardId}/move | Yes  | 200              | Move card to a different list |
-| DELETE | /boards/{boardId}/lists/{listId}/cards/{cardId}      | Yes  | 204              | Delete card                   |
+| Método | Caminho                                              | Auth | Status (sucesso) | Descrição                          |
+| ------ | ---------------------------------------------------- | ---- | ---------------- | ---------------------------------- |
+| POST   | /boards/{boardId}/lists/{listId}/cards               | Sim  | 201              | Criar card                         |
+| GET    | /boards/{boardId}/lists/{listId}/cards               | Sim  | 200              | Obter todos os cards               |
+| GET    | /boards/{boardId}/lists/{listId}/cards/{cardId}      | Sim  | 200              | Obter card                         |
+| PUT    | /boards/{boardId}/lists/{listId}/cards/{cardId}      | Sim  | 200              | Atualizar card                     |
+| PATCH  | /boards/{boardId}/lists/{listId}/cards/{cardId}/move | Sim  | 200              | Mover card para outra lista        |
+| DELETE | /boards/{boardId}/lists/{listId}/cards/{cardId}      | Sim  | 204              | Excluir card                       |
 
-Card status values: `ACTIVE`, `ARCHIVED`, `COMPLETED`.
+Valores de status do card: `ACTIVE`, `ARCHIVED`, `COMPLETED`.
 
-### Attachments
+### Anexos (Attachments)
 
-| Method | Path                                          | Auth | Status (success) | Description                            |
-| ------ | --------------------------------------------- | ---- | ---------------- | -------------------------------------- |
-| POST   | /cards/{cardId}/attachments/request-upload     | Yes  | 200              | Get presigned URL for direct S3 upload |
-| POST   | /cards/{cardId}/attachments/confirm            | Yes  | 201              | Confirm upload and save metadata       |
-| GET    | /cards/{cardId}/attachments                    | Yes  | 200              | List all attachments for a card        |
-| DELETE | /cards/{cardId}/attachments/{attachmentId}     | Yes  | 204              | Delete attachment from S3 and database |
+| Método | Caminho                                       | Auth | Status (sucesso) | Descrição                                      |
+| ------ | --------------------------------------------- | ---- | ---------------- | ---------------------------------------------- |
+| POST   | /cards/{cardId}/attachments/request-upload     | Sim  | 200              | Obter URL pré-assinada para upload direto no S3|
+| POST   | /cards/{cardId}/attachments/confirm            | Sim  | 201              | Confirmar upload e salvar metadados            |
+| GET    | /cards/{cardId}/attachments                    | Sim  | 200              | Listar todos os anexos de um card              |
+| DELETE | /cards/{cardId}/attachments/{attachmentId}     | Sim  | 204              | Excluir anexo do S3 e do banco de dados        |
 
-### Storage
+### Armazenamento (Storage)
 
-| Method | Path                     | Auth | Status (success) | Description                              |
-| ------ | ------------------------ | ---- | ---------------- | ---------------------------------------- |
-| POST   | /storage/upload          | Yes  | 201              | Direct file upload (images up to 5MB)    |
-| POST   | /storage/presigned-upload | Yes | 200              | Get presigned URL for large file upload  |
-| DELETE | /storage?fileUrl=        | Yes  | 204              | Delete a file from S3 by URL or key      |
+| Método | Caminho                  | Auth | Status (sucesso) | Descrição                                      |
+| ------ | ------------------------ | ---- | ---------------- | ---------------------------------------------- |
+| POST   | /storage/upload          | Sim  | 201              | Upload direto de arquivo (imagens até 5MB)     |
+| POST   | /storage/presigned-upload | Sim | 200              | Obter URL pré-assinada para upload de arquivos |
+| DELETE | /storage?fileUrl=        | Sim  | 204              | Excluir arquivo do S3 por URL ou key           |
 
 ---
 
-## File Storage (AWS S3)
+## Armazenamento de Arquivos (AWS S3)
 
-The API uses AWS S3 for all file storage with two upload strategies:
+A API utiliza AWS S3 para todo armazenamento de arquivos com duas estratégias de upload:
 
-### Upload Strategies
+### Estratégias de Upload
 
-| Strategy       | Use Case                | Max Size | Flow                                |
-| -------------- | ----------------------- | -------- | ----------------------------------- |
-| Direct Upload  | Avatars, covers (small) | 5 MB     | Client → API → S3                   |
-| Presigned URL  | Card attachments (large)| 50 MB    | API generates URL → Client → S3 directly |
+| Estratégia     | Caso de Uso                   | Tamanho Máx. | Fluxo                                       |
+| -------------- | ----------------------------- | ------------ | -------------------------------------------- |
+| Upload Direto  | Avatares, capas (pequenos)    | 5 MB         | Client → API → S3                            |
+| URL Pré-assinada | Anexos de cards (grandes)   | 50 MB        | API gera URL → Client → S3 diretamente       |
 
-### Allowed Image Types (Direct Upload)
+### Tipos de Imagem Permitidos (Upload Direto)
 
 - `image/jpeg`, `image/png`, `image/webp`
 
-### Blocked Extensions (Attachments)
+### Extensões Bloqueadas (Anexos)
 
 - `.exe`, `.bat`, `.cmd`, `.sh`, `.ps1`, `.msi`, `.dll`, `.com`
 
-### S3 Folder Structure
+### Estrutura de Pastas no S3
 
 ```
 bucket/
-├── avatars/               # User profile images
+├── avatars/               # Imagens de perfil dos usuários
 ├── covers/
-│   ├── boards/            # Board cover images
-│   └── workspaces/        # Workspace cover images
-└── attachments/           # Card file attachments
+│   ├── boards/            # Imagens de capa dos boards
+│   └── workspaces/        # Imagens de capa dos workspaces
+└── attachments/           # Anexos de arquivos dos cards
 ```
 
-### Default Images
+### Imagens Padrão
 
-All image fields (`avatarUrl`, `coverUrl`) are **nullable**. A `null` value means no custom image has been set — the frontend should render a default placeholder.
+Todos os campos de imagem (`avatarUrl`, `coverUrl`) são **anuláveis**. Um valor `null` significa que nenhuma imagem personalizada foi definida — o frontend deve renderizar um placeholder padrão.
 
-### Attachment Upload Flow (Presigned URL)
+### Fluxo de Upload de Anexos (URL Pré-assinada)
 
 ```
 ┌────────┐                    ┌────────┐                    ┌─────┐
@@ -437,24 +437,24 @@ All image fields (`avatarUrl`, `coverUrl`) are **nullable**. A `null` value mean
     │◄────────────────────────────│                            │
 ```
 
-### S3 Cleanup
+### Limpeza do S3
 
-All S3 files are automatically cleaned up when their parent resource is deleted:
+Todos os arquivos no S3 são automaticamente removidos quando o recurso pai é excluído:
 
-| Deletion Trigger     | Files Cleaned                                       |
-| -------------------- | --------------------------------------------------- |
-| Delete user account  | User avatar                                         |
-| Delete workspace     | Workspace cover + all board covers + all attachments |
-| Delete board         | Board cover + all card attachments in the board      |
-| Delete list          | All card attachments in the list                     |
-| Delete card          | All card attachments                                 |
-| Delete attachment    | Single file from S3                                  |
+| Gatilho de Exclusão      | Arquivos Removidos                                           |
+| ------------------------ | ------------------------------------------------------------ |
+| Excluir conta de usuário | Avatar do usuário                                            |
+| Excluir workspace        | Capa do workspace + todas as capas de boards + todos os anexos|
+| Excluir board            | Capa do board + todos os anexos de cards do board            |
+| Excluir lista            | Todos os anexos de cards da lista                            |
+| Excluir card             | Todos os anexos do card                                      |
+| Excluir anexo            | Arquivo único do S3                                          |
 
 ---
 
-## Usage Examples
+## Exemplos de Uso
 
-**Create a workspace**
+**Criar um workspace**
 
 ```
 POST /workspaces
@@ -465,7 +465,7 @@ Authorization: Bearer <access_token>
 { "name": "My Workspace" }
 ```
 
-**Invite a member to the workspace**
+**Convidar um membro para o workspace**
 
 ```
 POST /workspaces/<workspace_id>/members
@@ -476,7 +476,7 @@ Authorization: Bearer <access_token>
 { "emailOrUsername": "janedoe" }
 ```
 
-**Create a board inside the workspace**
+**Criar um board dentro do workspace**
 
 ```
 POST /boards?workspaceId=<workspace_id>
@@ -487,7 +487,7 @@ Authorization: Bearer <access_token>
 { "name": "My Project", "type": "BOARD", "description": "Main project board" }
 ```
 
-**Invite a workspace member to a specific board**
+**Convidar um membro do workspace para um board específico**
 
 ```
 POST /boards/<board_id>/members
@@ -498,7 +498,7 @@ Authorization: Bearer <access_token>
 { "emailOrUsername": "janedoe" }
 ```
 
-**Create a list inside the board**
+**Criar uma lista dentro do board**
 
 ```
 POST /boards/<board_id>/lists
@@ -509,7 +509,7 @@ Authorization: Bearer <access_token>
 { "name": "To Do" }
 ```
 
-**Create a card inside the list**
+**Criar um card dentro da lista**
 
 ```
 POST /boards/<board_id>/lists/<list_id>/cards
@@ -520,7 +520,7 @@ Authorization: Bearer <access_token>
 { "name": "Task 1", "description": "Task description", "status": "ACTIVE" }
 ```
 
-**Move a card to another list**
+**Mover um card para outra lista**
 
 ```
 PATCH /boards/<board_id>/lists/<list_id>/cards/<card_id>/move
@@ -531,7 +531,7 @@ Authorization: Bearer <access_token>
 { "targetListId": "<target_list_id>", "position": 0 }
 ```
 
-**Upload a user avatar**
+**Enviar um avatar de usuário**
 
 ```
 PUT /users/me/avatar
@@ -539,9 +539,9 @@ Authorization: Bearer <access_token>
 Content-Type: multipart/form-data
 ```
 
-Form data: `file` = JPG/PNG/WebP image (max 5MB)
+Form data: `file` = imagem JPG/PNG/WebP (máx. 5MB)
 
-**Upload a board cover**
+**Enviar uma capa de board**
 
 ```
 PUT /boards/<board_id>/cover
@@ -549,11 +549,11 @@ Authorization: Bearer <access_token>
 Content-Type: multipart/form-data
 ```
 
-Form data: `file` = JPG/PNG/WebP image (max 5MB)
+Form data: `file` = imagem JPG/PNG/WebP (máx. 5MB)
 
-**Attach a file to a card (presigned URL flow)**
+**Anexar um arquivo a um card (fluxo de URL pré-assinada)**
 
-Step 1 — Request upload URL:
+Passo 1 — Solicitar URL de upload:
 
 ```
 POST /cards/<card_id>/attachments/request-upload
@@ -574,7 +574,7 @@ Response `200 OK`:
 }
 ```
 
-Step 2 — Upload file directly to S3:
+Passo 2 — Enviar arquivo diretamente para o S3:
 
 ```
 PUT <uploadUrl from step 1>
@@ -582,7 +582,7 @@ Content-Type: application/pdf
 Body: <binary file>
 ```
 
-Step 3 — Confirm upload:
+Passo 3 — Confirmar upload:
 
 ```
 POST /cards/<card_id>/attachments/confirm
@@ -600,9 +600,9 @@ Authorization: Bearer <access_token>
 
 ---
 
-## Error Responses
+## Respostas de Erro
 
-All errors follow the format:
+Todos os erros seguem o formato:
 
 ```json
 {
@@ -613,48 +613,48 @@ All errors follow the format:
 }
 ```
 
-### Auth errors
+### Erros de autenticação
 
-| Code                      | HTTP Status | Endpoint(s)                                                      | Description                                  |
-| ------------------------- | ----------- | ---------------------------------------------------------------- | -------------------------------------------- |
-| `PASSWORDS_DO_NOT_MATCH`  | 400         | /auth/register                                                   | Passwords do not match                       |
-| `EMAIL_ALREADY_EXISTS`    | 400         | /auth/register                                                   | Email already registered                     |
-| `USERNAME_ALREADY_EXISTS` | 400         | /auth/register                                                   | Username already taken                       |
-| `INVALID_TOKEN`           | 400         | /auth/verify-email                                               | Token not found in database                  |
-| `EXPIRED_TOKEN`           | 400         | /auth/verify-email                                               | Token has passed its 24h expiry              |
-| `EMAIL_ALREADY_VERIFIED`  | 400         | /auth/verify-email, /auth/resend-verification                    | Account already active                       |
-| `EMAIL_NOT_FOUND`         | 404         | /auth/resend-verification, /auth/forgot-password                 | No account with that email                   |
-| `INVALID_CREDENTIALS`     | 401         | /auth/login                                                      | Wrong email/username or password             |
-| `USE_GOOGLE_LOGIN`        | 401         | /auth/login                                                      | Account uses Google Sign-In, no password set |
-| `INVALID_GOOGLE_TOKEN`    | 401         | /auth/google                                                     | Invalid or expired Google ID token           |
-| `EMAIL_NOT_VERIFIED`      | 403         | /auth/login                                                      | Account pending email verification           |
-| `EMAIL_SEND_ERROR`        | 500         | /auth/register, /auth/resend-verification, /auth/forgot-password | AWS SES failure                              |
-| `VALIDATION_ERROR`        | 400         | Any endpoint with @Valid body                                    | Bean validation failure (see `errors` array) |
+| Código                    | Status HTTP | Endpoint(s)                                                      | Descrição                                         |
+| ------------------------- | ----------- | ---------------------------------------------------------------- | ------------------------------------------------- |
+| `PASSWORDS_DO_NOT_MATCH`  | 400         | /auth/register                                                   | As senhas não coincidem                           |
+| `EMAIL_ALREADY_EXISTS`    | 400         | /auth/register                                                   | E-mail já registrado                              |
+| `USERNAME_ALREADY_EXISTS` | 400         | /auth/register                                                   | Username já em uso                                |
+| `INVALID_TOKEN`           | 400         | /auth/verify-email                                               | Token não encontrado no banco de dados            |
+| `EXPIRED_TOKEN`           | 400         | /auth/verify-email                                               | Token expirou (24h)                               |
+| `EMAIL_ALREADY_VERIFIED`  | 400         | /auth/verify-email, /auth/resend-verification                    | Conta já ativa                                    |
+| `EMAIL_NOT_FOUND`         | 404         | /auth/resend-verification, /auth/forgot-password                 | Nenhuma conta com esse e-mail                     |
+| `INVALID_CREDENTIALS`     | 401         | /auth/login                                                      | E-mail/username ou senha incorretos               |
+| `USE_GOOGLE_LOGIN`        | 401         | /auth/login                                                      | Conta usa Google Sign-In, sem senha definida      |
+| `INVALID_GOOGLE_TOKEN`    | 401         | /auth/google                                                     | Google ID token inválido ou expirado              |
+| `EMAIL_NOT_VERIFIED`      | 403         | /auth/login                                                      | Conta pendente de verificação de e-mail           |
+| `EMAIL_SEND_ERROR`        | 500         | /auth/register, /auth/resend-verification, /auth/forgot-password | Falha no AWS SES                                  |
+| `VALIDATION_ERROR`        | 400         | Qualquer endpoint com @Valid body                                | Falha de validação (veja array `errors`)          |
 
-### Members errors
+### Erros de membros
 
-| Code                    | HTTP Status | Endpoint(s)               | Description                              |
-| ----------------------- | ----------- | ------------------------- | ---------------------------------------- |
-| `USER_NOT_FOUND`        | 404         | POST .../members          | No user with that email or username      |
-| `USER_ALREADY_MEMBER`   | 400         | POST .../members          | User is already a member                 |
-| `USER_NOT_IN_WORKSPACE` | 400         | POST /boards/{id}/members | User must be a workspace member first    |
-| `MEMBER_NOT_FOUND`      | 404         | DELETE .../members/{id}   | Member not found                         |
-| `CANNOT_REMOVE_OWNER`   | 400         | DELETE .../members/{id}   | The owner cannot be removed              |
-| `FORBIDDEN`             | 403         | Any members endpoint      | Not a member or insufficient permissions |
+| Código                  | Status HTTP | Endpoint(s)               | Descrição                                          |
+| ----------------------- | ----------- | ------------------------- | -------------------------------------------------- |
+| `USER_NOT_FOUND`        | 404         | POST .../members          | Nenhum usuário com esse e-mail ou username         |
+| `USER_ALREADY_MEMBER`   | 400         | POST .../members          | Usuário já é membro                                |
+| `USER_NOT_IN_WORKSPACE` | 400         | POST /boards/{id}/members | Usuário deve ser membro do workspace primeiro      |
+| `MEMBER_NOT_FOUND`      | 404         | DELETE .../members/{id}   | Membro não encontrado                              |
+| `CANNOT_REMOVE_OWNER`   | 400         | DELETE .../members/{id}   | O proprietário não pode ser removido               |
+| `FORBIDDEN`             | 403         | Qualquer endpoint de membros | Não é membro ou permissões insuficientes        |
 
-### Resource errors
+### Erros de recursos
 
-| Code                  | HTTP Status | Description                          |
-| --------------------- | ----------- | ------------------------------------ |
-| `WORKSPACE_NOT_FOUND` | 404         | Workspace not found                  |
-| `BOARD_NOT_FOUND`     | 404         | Board not found                      |
-| `LIST_NOT_FOUND`      | 404         | List not found                       |
-| `CARD_NOT_FOUND`      | 404         | Card not found                       |
-| `FORBIDDEN`           | 403         | Insufficient access                  |
-| `INVALID_MOVE`        | 400         | Invalid card move                    |
-| `BAD_REQUEST`         | 400         | Invalid file type, size, or argument |
+| Código                | Status HTTP | Descrição                              |
+| --------------------- | ----------- | -------------------------------------- |
+| `WORKSPACE_NOT_FOUND` | 404         | Workspace não encontrado               |
+| `BOARD_NOT_FOUND`     | 404         | Board não encontrado                   |
+| `LIST_NOT_FOUND`      | 404         | Lista não encontrada                   |
+| `CARD_NOT_FOUND`      | 404         | Card não encontrado                    |
+| `FORBIDDEN`           | 403         | Acesso insuficiente                    |
+| `INVALID_MOVE`        | 400         | Movimentação de card inválida          |
+| `BAD_REQUEST`         | 400         | Tipo de arquivo, tamanho ou argumento inválido |
 
-### Validation error format
+### Formato de erro de validação
 
 ```json
 {
@@ -667,4 +667,4 @@ All errors follow the format:
 
 ---
 
-_Last updated: March 19, 2026_
+_Última atualização: 19 de março de 2026_

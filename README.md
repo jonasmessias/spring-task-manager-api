@@ -1,140 +1,140 @@
 # TaskManager API
 
-This project is a RESTful API built with **Spring Boot 3.5** and **Java 17** for managing tasks with workspaces, boards, lists, and cards — inspired by tools like Trello.
+Este projeto é uma API RESTful construída com **Spring Boot 3.5** e **Java 17** para gerenciamento de tarefas com workspaces, boards, listas e cards — inspirado em ferramentas como o Trello.
 
-## Prerequisites
+## Pré-requisitos
 
-Make sure you have the following installed:
+Certifique-se de ter os seguintes itens instalados:
 
 - [Java 17](https://adoptium.net/) (JDK)
-- [Maven 3.9+](https://maven.apache.org/) (or use the included `mvnw` wrapper)
-- [Docker & Docker Compose](https://www.docker.com/) (for infrastructure services)
-- [PostgreSQL 16](https://www.postgresql.org/) (if running without Docker)
-- [Redis 7](https://redis.io/) (if running without Docker)
+- [Maven 3.9+](https://maven.apache.org/) (ou utilize o wrapper `mvnw` incluído)
+- [Docker & Docker Compose](https://www.docker.com/) (para serviços de infraestrutura)
+- [PostgreSQL 16](https://www.postgresql.org/) (se executar sem Docker)
+- [Redis 7](https://redis.io/) (se executar sem Docker)
 
-## Getting Started
+## Primeiros Passos
 
-### 1. Clone the repository
+### 1. Clonar o repositório
 
 ```bash
 git clone https://github.com/reazew/task-manager-api.git
 cd task-manager-api
 ```
 
-### 2. Configure environment variables
+### 2. Configurar variáveis de ambiente
 
-Copy the example properties file and fill in your values:
+Copie o arquivo de propriedades de exemplo e preencha com seus valores:
 
 ```bash
 cp src/main/resources/application-example.properties src/main/resources/application.properties
 ```
 
-Update the following properties in `application.properties`:
+Atualize as seguintes propriedades em `application.properties`:
 
-| Property                    | Description                        |
-| --------------------------- | ---------------------------------- |
-| `api.security.token.secret` | Strong random key for JWT signing  |
-| `aws.ses.access-key`        | AWS SES access key                 |
-| `aws.ses.secret-key`        | AWS SES secret key                 |
-| `aws.ses.from`              | Verified sender email in AWS SES   |
-| `aws.s3.access-key`         | AWS S3 access key                  |
-| `aws.s3.secret-key`         | AWS S3 secret key                  |
-| `aws.s3.bucket-name`        | S3 bucket name for file storage    |
-| `aws.s3.region`             | AWS region for S3 bucket           |
-| `google.client-id`          | Google OAuth 2.0 client ID         |
-| `app.frontend.url`          | Frontend URL for CORS (dev)        |
-| `app.frontend.prod-url`     | Frontend URL for CORS (production) |
+| Propriedade                 | Descrição                                  |
+| --------------------------- | ------------------------------------------ |
+| `api.security.token.secret` | Chave forte e aleatória para assinar JWTs  |
+| `aws.ses.access-key`        | Chave de acesso AWS SES                    |
+| `aws.ses.secret-key`        | Chave secreta AWS SES                      |
+| `aws.ses.from`              | E-mail de remetente verificado no AWS SES  |
+| `aws.s3.access-key`         | Chave de acesso AWS S3                     |
+| `aws.s3.secret-key`         | Chave secreta AWS S3                       |
+| `aws.s3.bucket-name`        | Nome do bucket S3 para armazenamento       |
+| `aws.s3.region`             | Região AWS do bucket S3                    |
+| `google.client-id`          | Client ID do Google OAuth 2.0              |
+| `app.frontend.url`          | URL do frontend para CORS (desenvolvimento)|
+| `app.frontend.prod-url`     | URL do frontend para CORS (produção)       |
 
-### 3. Start infrastructure with Docker Compose
+### 3. Iniciar infraestrutura com Docker Compose
 
 ```bash
 docker compose up -d postgres redis
 ```
 
-This starts **PostgreSQL** on port `5432` and **Redis** on port `6379`.
+Isso inicia o **PostgreSQL** na porta `5432` e o **Redis** na porta `6379`.
 
-### 4. Run the application
+### 4. Executar a aplicação
 
 ```bash
 ./mvnw spring-boot:run
 ```
 
-The API will be available at `http://localhost:8080`.
+A API estará disponível em `http://localhost:8080`.
 
-## Running with Docker (full stack)
+## Executando com Docker (stack completa)
 
-To run the entire stack (API + PostgreSQL + Redis) in containers:
+Para executar a stack completa (API + PostgreSQL + Redis) em containers:
 
 ```bash
 docker compose up -d --build
 ```
 
-The API will be available at `http://localhost:8080`.
+A API estará disponível em `http://localhost:8080`.
 
-## API Documentation
+## Documentação da API
 
-Once the server is running, open your browser and navigate to:
+Com o servidor em execução, abra o navegador e acesse:
 
 ```
 http://localhost:8080/swagger-ui.html
 ```
 
-The interactive Swagger UI lets you explore and test all available endpoints.
+A interface interativa do Swagger UI permite explorar e testar todos os endpoints disponíveis.
 
-## Project Structure
+## Estrutura do Projeto
 
 ```
 src/main/java/com/example/taskmanagerapi/
-├── config/              # OpenAPI, Redis, AWS SES, AWS S3 configuration
+├── config/              # Configuração OpenAPI, Redis, AWS SES, AWS S3
 ├── infra/
-│   ├── cors/            # CORS policy
-│   ├── exception/       # Global exception handler
-│   └── security/        # JWT filter, token service, security config
+│   ├── cors/            # Política de CORS
+│   ├── exception/       # Tratamento global de exceções
+│   └── security/        # Filtro JWT, serviço de token, configuração de segurança
 └── modules/
-    ├── auth/            # Authentication, users, email verification
-    ├── workspaces/      # Workspace CRUD + members + covers
-    ├── boards/          # Board CRUD + members + covers
-    ├── lists/           # List (column) CRUD
-    ├── cards/           # Card CRUD + drag-and-drop + attachments
-    └── storage/         # AWS S3 file upload (direct + presigned URLs)
+    ├── auth/            # Autenticação, usuários, verificação de e-mail
+    ├── workspaces/      # CRUD de Workspaces + membros + capas
+    ├── boards/          # CRUD de Boards + membros + capas
+    ├── lists/           # CRUD de Listas (colunas)
+    ├── cards/           # CRUD de Cards + drag-and-drop + anexos
+    └── storage/         # Upload de arquivos AWS S3 (direto + URLs pré-assinadas)
 ```
 
-## Tech Stack
+## Stack Tecnológica
 
-| Technology        | Purpose                                |
-| ----------------- | -------------------------------------- |
-| Java 17           | Language                               |
-| Spring Boot 3.5   | Framework                              |
-| Spring Security   | Authentication & authorization         |
-| JWT (java-jwt)    | Access token (4h expiry)               |
-| PostgreSQL 16     | Primary database                       |
-| Redis 7           | Refresh token caching (7d TTL)         |
-| AWS SES           | Transactional emails (HTML)            |
-| AWS S3            | File storage (avatars, covers, files)  |
-| Google OAuth 2.0  | Social login                           |
-| Thymeleaf         | HTML email templates                   |
-| Springdoc OpenAPI | Swagger UI documentation               |
-| Docker Compose    | Infrastructure containerization        |
-| Lombok            | Boilerplate reduction                  |
+| Tecnologia        | Finalidade                                 |
+| ----------------- | ------------------------------------------ |
+| Java 17           | Linguagem                                  |
+| Spring Boot 3.5   | Framework                                  |
+| Spring Security   | Autenticação e autorização                 |
+| JWT (java-jwt)    | Token de acesso (expiração de 4h)          |
+| PostgreSQL 16     | Banco de dados principal                   |
+| Redis 7           | Cache de refresh tokens (TTL de 7 dias)    |
+| AWS SES           | E-mails transacionais (HTML)               |
+| AWS S3            | Armazenamento de arquivos (avatares, capas)|
+| Google OAuth 2.0  | Login social                               |
+| Thymeleaf         | Templates de e-mail HTML                   |
+| Springdoc OpenAPI | Documentação Swagger UI                    |
+| Docker Compose    | Containerização da infraestrutura          |
+| Lombok            | Redução de boilerplate                     |
 
-## Running Tests
+## Executando Testes
 
-To execute the unit tests, use the following command:
+Para executar os testes unitários, utilize o seguinte comando:
 
 ```bash
 ./mvnw test
 ```
 
-## Building
+## Build
 
-To build the project and generate the `.jar` artifact:
+Para compilar o projeto e gerar o artefato `.jar`:
 
 ```bash
 ./mvnw clean package -DskipTests
 ```
 
-The compiled JAR will be stored at `target/task-manager-api-1.0.0.jar`.
+O JAR compilado será armazenado em `target/task-manager-api-1.0.0.jar`.
 
-## Further Help
+## Saiba Mais
 
-For more details about the architecture, authentication flow, endpoints, and business rules, see the [DOCUMENTATION.md](DOCUMENTATION.md) file.
+Para mais detalhes sobre a arquitetura, fluxo de autenticação, endpoints e regras de negócio, consulte o arquivo [DOCUMENTATION.md](DOCUMENTATION.md).
