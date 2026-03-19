@@ -31,19 +31,19 @@ cp src/main/resources/application-example.properties src/main/resources/applicat
 
 Atualize as seguintes propriedades em `application.properties`:
 
-| Propriedade                 | Descrição                                  |
-| --------------------------- | ------------------------------------------ |
-| `api.security.token.secret` | Chave forte e aleatória para assinar JWTs  |
-| `aws.ses.access-key`        | Chave de acesso AWS SES                    |
-| `aws.ses.secret-key`        | Chave secreta AWS SES                      |
-| `aws.ses.from`              | E-mail de remetente verificado no AWS SES  |
-| `aws.s3.access-key`         | Chave de acesso AWS S3                     |
-| `aws.s3.secret-key`         | Chave secreta AWS S3                       |
-| `aws.s3.bucket-name`        | Nome do bucket S3 para armazenamento       |
-| `aws.s3.region`             | Região AWS do bucket S3                    |
-| `google.client-id`          | Client ID do Google OAuth 2.0              |
-| `app.frontend.url`          | URL do frontend para CORS (desenvolvimento)|
-| `app.frontend.prod-url`     | URL do frontend para CORS (produção)       |
+| Propriedade                 | Descrição                                   |
+| --------------------------- | ------------------------------------------- |
+| `api.security.token.secret` | Chave forte e aleatória para assinar JWTs   |
+| `aws.ses.access-key`        | Chave de acesso AWS SES                     |
+| `aws.ses.secret-key`        | Chave secreta AWS SES                       |
+| `aws.ses.from`              | E-mail de remetente verificado no AWS SES   |
+| `aws.s3.access-key`         | Chave de acesso AWS S3                      |
+| `aws.s3.secret-key`         | Chave secreta AWS S3                        |
+| `aws.s3.bucket-name`        | Nome do bucket S3 para armazenamento        |
+| `aws.s3.region`             | Região AWS do bucket S3                     |
+| `google.client-id`          | Client ID do Google OAuth 2.0               |
+| `app.frontend.url`          | URL do frontend para CORS (desenvolvimento) |
+| `app.frontend.prod-url`     | URL do frontend para CORS (produção)        |
 
 ### 3. Iniciar infraestrutura com Docker Compose
 
@@ -101,21 +101,21 @@ src/main/java/com/example/taskmanagerapi/
 
 ## Stack Tecnológica
 
-| Tecnologia        | Finalidade                                 |
-| ----------------- | ------------------------------------------ |
-| Java 17           | Linguagem                                  |
-| Spring Boot 3.5   | Framework                                  |
-| Spring Security   | Autenticação e autorização                 |
-| JWT (java-jwt)    | Token de acesso (expiração de 4h)          |
-| PostgreSQL 16     | Banco de dados principal                   |
-| Redis 7           | Cache de refresh tokens (TTL de 7 dias)    |
-| AWS SES           | E-mails transacionais (HTML)               |
-| AWS S3            | Armazenamento de arquivos (avatares, capas)|
-| Google OAuth 2.0  | Login social                               |
-| Thymeleaf         | Templates de e-mail HTML                   |
-| Springdoc OpenAPI | Documentação Swagger UI                    |
-| Docker Compose    | Containerização da infraestrutura          |
-| Lombok            | Redução de boilerplate                     |
+| Tecnologia        | Finalidade                                  |
+| ----------------- | ------------------------------------------- |
+| Java 17           | Linguagem                                   |
+| Spring Boot 3.5   | Framework                                   |
+| Spring Security   | Autenticação e autorização                  |
+| JWT (java-jwt)    | Token de acesso (expiração de 4h)           |
+| PostgreSQL 16     | Banco de dados principal                    |
+| Redis 7           | Cache de refresh tokens (TTL de 7 dias)     |
+| AWS SES           | E-mails transacionais (HTML)                |
+| AWS S3            | Armazenamento de arquivos (avatares, capas) |
+| Google OAuth 2.0  | Login social                                |
+| Thymeleaf         | Templates de e-mail HTML                    |
+| Springdoc OpenAPI | Documentação Swagger UI                     |
+| Docker Compose    | Containerização da infraestrutura           |
+| Lombok            | Redução de boilerplate                      |
 
 ## Executando Testes
 
