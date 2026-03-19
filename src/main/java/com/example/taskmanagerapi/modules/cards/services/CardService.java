@@ -29,6 +29,7 @@ import lombok.RequiredArgsConstructor;
 public class CardService {
     
     private final CardRepository cardRepository;
+    private final AttachmentService attachmentService;
     
     /**
      * Create a new card in a list
@@ -126,20 +127,29 @@ public class CardService {
     
     /**
      * Delete a card
+     * Also removes all attachments from S3
      */
     @Transactional
     public void deleteCard(String id) {
         if (id != null && !id.isBlank()) {
-            cardRepository.deleteById(id);
+            Optional<Card> cardOpt = cardRepository.findById(id);
+            if (cardOpt.isPresent()) {
+                attachmentService.deleteAllByCard(cardOpt.get());
+                cardRepository.deleteById(id);
+            }
         }
     }
     
     /**
      * Delete all cards from a list
-     * Used when deleting a list
+     * Used when deleting a list — also removes attachments from S3
      */
     @Transactional
     public void deleteAllByList(BoardList list) {
+        List<Card> cards = cardRepository.findByListOrderByPositionAsc(list);
+        for (Card card : cards) {
+            attachmentService.deleteAllByCard(card);
+        }
         cardRepository.deleteByList(list);
     }
 }

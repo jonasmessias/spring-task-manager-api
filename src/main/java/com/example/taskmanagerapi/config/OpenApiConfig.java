@@ -219,6 +219,10 @@ public class OpenApiConfig {
                 .addTagsItem(new Tag().name("Board Lists")
                         .description("Lists (columns) inside a board"))
                 .addTagsItem(new Tag().name("Cards")
-                        .description("Cards (tasks) inside a list"));
+                        .description("Cards (tasks) inside a list"))
+                .addTagsItem(new Tag().name("Attachments")
+                        .description("File attachments on cards (presigned URL upload)"))
+                .addTagsItem(new Tag().name("Storage")
+                        .description("File upload and management (avatars, covers, attachments)"));
     }
 }
