@@ -53,6 +53,12 @@ public class Board {
     
     @Column(length = 500)
     private String description;
+
+    /**
+     * Board cover image URL (nullable = no custom cover)
+     */
+    @Column(nullable = true)
+    private String coverUrl;
     
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "owner_id", nullable = false)

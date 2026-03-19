@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Optional;
 
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -13,10 +14,14 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 import com.example.taskmanagerapi.modules.auth.domain.User;
 import com.example.taskmanagerapi.modules.auth.dto.ErrorResponseDTO;
+import com.example.taskmanagerapi.modules.storage.dto.UploadResponseDTO;
+import com.example.taskmanagerapi.modules.storage.services.StorageService;
 import com.example.taskmanagerapi.modules.workspaces.domain.Workspace;
 import com.example.taskmanagerapi.modules.workspaces.dto.CreateWorkspaceDTO;
 import com.example.taskmanagerapi.modules.workspaces.dto.UpdateWorkspaceDTO;
@@ -45,6 +50,9 @@ public class WorkspaceController {
     
     private final WorkspaceService workspaceService;
     private final WorkspaceMemberService memberService;
+    private final StorageService storageService;
+
+    private static final String WORKSPACE_COVER_FOLDER = "covers/workspaces";
 
     @Operation(summary = "Create Workspace", description = "Create a new workspace for organizing boards")
     @ApiResponses(value = {
@@ -187,8 +195,86 @@ public class WorkspaceController {
                 "FORBIDDEN", "Only the workspace owner can delete it.", 403
             ));
         }
-        
+
         workspaceService.deleteWorkspace(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    // ── Cover endpoints ─────────────────────────────────────────────────
+
+    @Operation(summary = "Upload Workspace Cover", description = "Upload or replace the workspace cover image. Only the owner can upload. Accepts JPG, PNG and WebP up to 5MB.")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Cover uploaded successfully",
+                content = @Content(schema = @Schema(implementation = UploadResponseDTO.class))),
+        @ApiResponse(responseCode = "404", description = "Workspace not found"),
+        @ApiResponse(responseCode = "403", description = "Not the workspace owner"),
+        @ApiResponse(responseCode = "400", description = "Invalid file"),
+        @ApiResponse(responseCode = "401", description = "Unauthorized")
+    })
+    @PutMapping(value = "/{id}/cover", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<Object> uploadWorkspaceCover(
+            @Parameter(description = "Workspace ID", required = true) @PathVariable String id,
+            @RequestParam("file") MultipartFile file,
+            @AuthenticationPrincipal User user) {
+
+        Optional<Workspace> workspaceOpt = workspaceService.getWorkspaceById(id);
+        if (workspaceOpt.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ErrorResponseDTO(
+                "WORKSPACE_NOT_FOUND", "Workspace not found.", 404
+            ));
+        }
+
+        Workspace workspace = workspaceOpt.get();
+        if (!workspaceService.isWorkspaceOwner(workspace, user)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(new ErrorResponseDTO(
+                "FORBIDDEN", "Only the workspace owner can update the cover.", 403
+            ));
+        }
+
+        // Delete old cover if exists
+        if (workspace.getCoverUrl() != null) {
+            storageService.deleteFile(workspace.getCoverUrl());
+        }
+
+        String fileUrl = storageService.uploadFile(file, WORKSPACE_COVER_FOLDER);
+        workspace.setCoverUrl(fileUrl);
+        workspaceService.saveWorkspace(workspace);
+
+        return ResponseEntity.ok(new UploadResponseDTO(fileUrl));
+    }
+
+    @Operation(summary = "Delete Workspace Cover", description = "Remove the workspace cover image. Only the owner can delete.")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "204", description = "Cover removed successfully"),
+        @ApiResponse(responseCode = "404", description = "Workspace not found"),
+        @ApiResponse(responseCode = "403", description = "Not the workspace owner"),
+        @ApiResponse(responseCode = "401", description = "Unauthorized")
+    })
+    @DeleteMapping("/{id}/cover")
+    public ResponseEntity<Object> deleteWorkspaceCover(
+            @Parameter(description = "Workspace ID", required = true) @PathVariable String id,
+            @AuthenticationPrincipal User user) {
+
+        Optional<Workspace> workspaceOpt = workspaceService.getWorkspaceById(id);
+        if (workspaceOpt.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ErrorResponseDTO(
+                "WORKSPACE_NOT_FOUND", "Workspace not found.", 404
+            ));
+        }
+
+        Workspace workspace = workspaceOpt.get();
+        if (!workspaceService.isWorkspaceOwner(workspace, user)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(new ErrorResponseDTO(
+                "FORBIDDEN", "Only the workspace owner can remove the cover.", 403
+            ));
+        }
+
+        if (workspace.getCoverUrl() != null) {
+            storageService.deleteFile(workspace.getCoverUrl());
+            workspace.setCoverUrl(null);
+            workspaceService.saveWorkspace(workspace);
+        }
+
         return ResponseEntity.noContent().build();
     }
 }

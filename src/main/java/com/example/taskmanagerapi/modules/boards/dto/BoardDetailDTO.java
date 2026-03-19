@@ -12,6 +12,7 @@ public record BoardDetailDTO(
     String name,
     BoardType type,
     String description,
+    String coverUrl,
     String ownerId,
     String ownerName,
     List<ListResponseDTO> lists,
@@ -24,6 +25,7 @@ public record BoardDetailDTO(
             board.getName(),
             board.getType(),
             board.getDescription(),
+            board.getCoverUrl(),
             board.getOwner().getId(),
             board.getOwner().getName(),
             board.getLists() != null ? 

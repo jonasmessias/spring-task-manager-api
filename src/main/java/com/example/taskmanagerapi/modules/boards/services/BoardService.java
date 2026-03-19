@@ -20,6 +20,7 @@ import com.example.taskmanagerapi.modules.boards.dto.CreateBoardDTO;
 import com.example.taskmanagerapi.modules.boards.dto.UpdateBoardDTO;
 import com.example.taskmanagerapi.modules.boards.repositories.BoardRepository;
 import com.example.taskmanagerapi.modules.lists.services.BoardListService;
+import com.example.taskmanagerapi.modules.storage.services.StorageService;
 import com.example.taskmanagerapi.modules.workspaces.domain.Workspace;
 
 import lombok.RequiredArgsConstructor;
@@ -34,6 +35,7 @@ public class BoardService {
     private final BoardRepository boardRepository;
     private final BoardListService listService;
     private final BoardMemberService boardMemberService;
+    private final StorageService storageService;
 
     /**
      * Create a new board for a user within a workspace
@@ -91,6 +93,14 @@ public class BoardService {
     }
 
     /**
+     * Save a board entity (used for field updates like cover)
+     */
+    public Board saveBoard(@NonNull Board board) {
+        board.setUpdatedAt(LocalDateTime.now());
+        return boardRepository.save(board);
+    }
+
+    /**
      * Update an existing board
      */
     @Transactional
@@ -117,6 +127,13 @@ public class BoardService {
         Optional<Board> boardOpt = boardRepository.findById(id);
         if (boardOpt.isPresent()) {
             Board board = Objects.requireNonNull(boardOpt.get());
+
+            // Delete board cover from S3
+            if (board.getCoverUrl() != null) {
+                storageService.deleteFile(board.getCoverUrl());
+            }
+
+            // Cascade: delete all lists, cards, and attachments (S3 cleanup included)
             listService.deleteAllByBoard(board);
             boardRepository.deleteById(id);
         }

@@ -41,6 +41,12 @@ public class Workspace {
     
     @Column(nullable = false)
     private String name;
+
+    /**
+     * Workspace cover image URL (nullable = no custom cover)
+     */
+    @Column(nullable = true)
+    private String coverUrl;
     
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "owner_id", nullable = false)

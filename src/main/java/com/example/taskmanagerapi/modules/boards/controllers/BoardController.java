@@ -7,6 +7,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.lang.NonNull;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -19,6 +20,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 import com.example.taskmanagerapi.modules.auth.domain.User;
 import com.example.taskmanagerapi.modules.auth.dto.ErrorResponseDTO;
@@ -29,6 +31,8 @@ import com.example.taskmanagerapi.modules.boards.dto.CreateBoardDTO;
 import com.example.taskmanagerapi.modules.boards.dto.UpdateBoardDTO;
 import com.example.taskmanagerapi.modules.boards.services.BoardMemberService;
 import com.example.taskmanagerapi.modules.boards.services.BoardService;
+import com.example.taskmanagerapi.modules.storage.dto.UploadResponseDTO;
+import com.example.taskmanagerapi.modules.storage.services.StorageService;
 import com.example.taskmanagerapi.modules.workspaces.domain.Workspace;
 import com.example.taskmanagerapi.modules.workspaces.services.WorkspaceMemberService;
 import com.example.taskmanagerapi.modules.workspaces.services.WorkspaceService;
@@ -55,6 +59,9 @@ public class BoardController {
     private final WorkspaceService workspaceService;
     private final WorkspaceMemberService workspaceMemberService;
     private final BoardMemberService boardMemberService;
+    private final StorageService storageService;
+
+    private static final String BOARD_COVER_FOLDER = "covers/boards";
 
     @Operation(summary = "Create Board", description = "Create a new board within a workspace. Any workspace member can create boards.")
     @ApiResponses(value = {
@@ -240,6 +247,84 @@ public class BoardController {
         }
         
         boardService.deleteBoard(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    // ── Cover endpoints ─────────────────────────────────────────────────
+
+    @Operation(summary = "Upload Board Cover", description = "Upload or replace the board cover image. Only the board owner can upload. Accepts JPG, PNG and WebP up to 5MB.")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Cover uploaded successfully",
+                content = @Content(schema = @Schema(implementation = UploadResponseDTO.class))),
+        @ApiResponse(responseCode = "404", description = "Board not found"),
+        @ApiResponse(responseCode = "403", description = "Not the board owner"),
+        @ApiResponse(responseCode = "400", description = "Invalid file"),
+        @ApiResponse(responseCode = "401", description = "Unauthorized")
+    })
+    @PutMapping(value = "/{id}/cover", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<Object> uploadBoardCover(
+            @Parameter(description = "Board ID", required = true) @PathVariable @NonNull String id,
+            @RequestParam("file") MultipartFile file,
+            @AuthenticationPrincipal User user) {
+
+        Optional<Board> boardOpt = boardService.getBoardById(id);
+        if (boardOpt.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ErrorResponseDTO(
+                "BOARD_NOT_FOUND", "Board not found.", 404
+            ));
+        }
+
+        Board board = boardOpt.get();
+        if (!board.getOwner().getId().equals(user.getId())) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(new ErrorResponseDTO(
+                "FORBIDDEN", "Only the board owner can update the cover.", 403
+            ));
+        }
+
+        // Delete old cover if exists
+        if (board.getCoverUrl() != null) {
+            storageService.deleteFile(board.getCoverUrl());
+        }
+
+        String fileUrl = storageService.uploadFile(file, BOARD_COVER_FOLDER);
+        board.setCoverUrl(fileUrl);
+        boardService.saveBoard(board);
+
+        return ResponseEntity.ok(new UploadResponseDTO(fileUrl));
+    }
+
+    @Operation(summary = "Delete Board Cover", description = "Remove the board cover image. Only the board owner can delete.")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "204", description = "Cover removed successfully"),
+        @ApiResponse(responseCode = "404", description = "Board not found"),
+        @ApiResponse(responseCode = "403", description = "Not the board owner"),
+        @ApiResponse(responseCode = "401", description = "Unauthorized")
+    })
+    @DeleteMapping("/{id}/cover")
+    public ResponseEntity<Object> deleteBoardCover(
+            @Parameter(description = "Board ID", required = true) @PathVariable @NonNull String id,
+            @AuthenticationPrincipal User user) {
+
+        Optional<Board> boardOpt = boardService.getBoardById(id);
+        if (boardOpt.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ErrorResponseDTO(
+                "BOARD_NOT_FOUND", "Board not found.", 404
+            ));
+        }
+
+        Board board = boardOpt.get();
+        if (!board.getOwner().getId().equals(user.getId())) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(new ErrorResponseDTO(
+                "FORBIDDEN", "Only the board owner can remove the cover.", 403
+            ));
+        }
+
+        if (board.getCoverUrl() != null) {
+            storageService.deleteFile(board.getCoverUrl());
+            board.setCoverUrl(null);
+            boardService.saveBoard(board);
+        }
+
         return ResponseEntity.noContent().build();
     }
 }

@@ -11,6 +11,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.example.taskmanagerapi.modules.auth.domain.User;
+import com.example.taskmanagerapi.modules.boards.domain.Board;
+import com.example.taskmanagerapi.modules.boards.services.BoardService;
+import com.example.taskmanagerapi.modules.storage.services.StorageService;
 import com.example.taskmanagerapi.modules.workspaces.domain.Workspace;
 import com.example.taskmanagerapi.modules.workspaces.dto.CreateWorkspaceDTO;
 import com.example.taskmanagerapi.modules.workspaces.dto.UpdateWorkspaceDTO;
@@ -29,6 +32,8 @@ public class WorkspaceService {
     
     private final WorkspaceRepository workspaceRepository;
     private final WorkspaceMemberService memberService;
+    private final BoardService boardService;
+    private final StorageService storageService;
 
     /**
      * Create a new workspace for a user
@@ -70,6 +75,14 @@ public class WorkspaceService {
     }
 
     /**
+     * Save a workspace entity (used for field updates like cover)
+     */
+    public Workspace saveWorkspace(@NonNull Workspace workspace) {
+        workspace.setUpdatedAt(LocalDateTime.now());
+        return workspaceRepository.save(workspace);
+    }
+
+    /**
      * Update an existing workspace
      */
     @Transactional
@@ -90,7 +103,7 @@ public class WorkspaceService {
 
     /**
      * Delete a workspace by ID
-     * Cascades deletion to all boards, lists, and cards
+     * Cleans up S3 files (board covers, card attachments) before cascading deletion
      */
     @Transactional
     public void deleteWorkspace(@NonNull String id) {
@@ -98,7 +111,19 @@ public class WorkspaceService {
                 Objects.requireNonNull(id, "Workspace ID cannot be null")
             )
             .orElseThrow(() -> new IllegalArgumentException("Workspace not found"));
-        
+
+        // Delete workspace cover from S3
+        if (workspace.getCoverUrl() != null) {
+            storageService.deleteFile(workspace.getCoverUrl());
+        }
+
+        // Clean up S3 files for each board (covers + list/card attachments)
+        if (workspace.getBoards() != null) {
+            for (Board board : workspace.getBoards()) {
+                boardService.deleteBoard(board.getId());
+            }
+        }
+
         workspaceRepository.delete(
             Objects.requireNonNull(workspace, "Workspace cannot be null")
         );

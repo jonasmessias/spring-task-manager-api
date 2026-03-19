@@ -10,6 +10,7 @@ import com.example.taskmanagerapi.modules.workspaces.domain.Workspace;
 public record WorkspaceResponseDTO(
     String id,
     String name,
+    String coverUrl,
     Integer boardCount,
     LocalDateTime createdAt,
     LocalDateTime updatedAt
@@ -18,6 +19,7 @@ public record WorkspaceResponseDTO(
         this(
             workspace.getId(),
             workspace.getName(),
+            workspace.getCoverUrl(),
             workspace.getBoards() != null ? workspace.getBoards().size() : 0,
             workspace.getCreatedAt(),
             workspace.getUpdatedAt()
