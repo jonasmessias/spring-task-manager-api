@@ -1,166 +1,329 @@
-# Task Manager API# Task Manager API
-
-Java · Spring Boot · JWT · Redis · PostgreSQL · Docker · AWS SES · Google OAuthJava · Spring Boot · JWT · Redis · PostgreSQL · Docker · AWS SES
-
----
-
-## Setup## Setup
-
-**1 - Install Docker\*\***1 - Install Docker\*\*
-
-https://www.docker.comhttps://www.docker.com
-
-**2 - Configure environment\*\***2 - Run the application\*\*
-
-Copy the example configuration and fill in your values:Open a terminal in the project root and run:
-
-`bash`bash
-
-cp src/main/resources/application-example.properties src/main/resources/application.propertiesdocker-compose up -d
-
-`````
+# Task Manager API — Technical Documentation# Task Manager API# Task Manager API
 
 
 
-Edit `application.properties` with your credentials (JWT secret, AWS SES keys, Google Client ID).After running, the following services will be available:
+## ArchitectureJava · Spring Boot · JWT · Redis · PostgreSQL · Docker · AWS SES · Google OAuthJava · Spring Boot · JWT · Redis · PostgreSQL · Docker · AWS SES
 
 
 
-**3 - Run the application**| Service    | Port | URL                                   |
+```---
 
-| ---------- | ---- | ------------------------------------- |
+┌──────────────┐       ┌──────────────┐       ┌──────────────┐
 
-```bash| API        | 8080 | http://localhost:8080                 |
+│   Angular    │◄─────►│  Spring Boot │◄─────►│  PostgreSQL  │## Setup## Setup
+
+│  (Frontend)  │  REST │     API      │  JPA  │   Database   │
+
+└──────────────┘       └──────┬───────┘       └──────────────┘**1 - Install Docker\*\***1 - Install Docker\*\*
+
+                              │
+
+                    ┌─────────┼─────────┐https://www.docker.comhttps://www.docker.com
+
+                    │         │         │
+
+               ┌────▼───┐ ┌──▼───┐ ┌───▼────┐**2 - Configure environment\*\***2 - Run the application\*\*
+
+               │ Redis  │ │ AWS  │ │ Google │
+
+               │ Cache  │ │ SES  │ │ OAuth  │Copy the example configuration and fill in your values:Open a terminal in the project root and run:
+
+               └────────┘ └──────┘ └────────┘
+
+````bash`bash
+
+
+
+### Module Structurecp src/main/resources/application-example.properties src/main/resources/application.propertiesdocker-compose up -d
+
+
+
+````````
+
+src/main/java/com/example/taskmanagerapi/
+
+├── config/            # OpenAPI, Redis configuration
+
+├── infra/
+
+│   ├── cors/          # CORS policy (restricted origins)Edit `application.properties` with your credentials (JWT secret, AWS SES keys, Google Client ID).After running, the following services will be available:
+
+│   ├── exception/     # Global exception handler
+
+│   └── security/      # JWT filter, token service, security config
+
+└── modules/
+
+    ├── auth/          # Authentication, users, email, audit**3 - Run the application**| Service    | Port | URL                                   |
+
+    ├── workspaces/    # Workspace CRUD + members
+
+    ├── boards/        # Board CRUD + members| ---------- | ---- | ------------------------------------- |
+
+    ├── lists/         # List (column) CRUD
+
+    └── cards/         # Card CRUD + drag-and-drop```bash| API        | 8080 | http://localhost:8080                 |
+
+```
 
 docker-compose up -d| Swagger UI | 8080 | http://localhost:8080/swagger-ui.html |
 
+---
+
 ```| PostgreSQL | 5432 | localhost:5432                        |
+
+## Tech Stack
 
 | Redis      | 6379 | localhost:6379                        |
 
-| Service    | Port | URL                                   |
+| Technology       | Purpose                          |
 
-| ---------- | ---- | ------------------------------------- |**PostgreSQL connection:**
+| ---------------- | -------------------------------- || Service    | Port | URL                                   |
 
-| API        | 8080 | http://localhost:8080                 |
+| Java 17          | Language                         |
 
-| Swagger UI | 8080 | http://localhost:8080/swagger-ui.html |- Host: `localhost`
+| Spring Boot 3.5  | Framework                        || ---------- | ---- | ------------------------------------- |**PostgreSQL connection:**
 
-| PostgreSQL | 5432 | localhost:5432                        |- Port: `5432`
+| Spring Security  | Authentication & authorization   |
 
-| Redis      | 6379 | localhost:6379                        |- Database: `taskmanager`
+| JWT (java-jwt)   | Access token (4h expiry)         || API        | 8080 | http://localhost:8080                 |
 
-- Username: `admin`
+| Redis 7          | Refresh token caching (7d)       |
 
-**PostgreSQL connection:**- Password: `admin`
+| PostgreSQL 16    | Primary database                 || Swagger UI | 8080 | http://localhost:8080/swagger-ui.html |- Host: `localhost`
 
+| AWS SES          | Transactional email (HTML)       |
 
+| Thymeleaf        | HTML email templates             || PostgreSQL | 5432 | localhost:5432                        |- Port: `5432`
 
-- Host: `localhost`**3 - Configure AWS SES (email sending)**
+| Google OAuth 2.0 | Social login                     |
 
-- Port: `5432`
+| Springdoc OpenAPI| Swagger UI documentation         || Redis      | 6379 | localhost:6379                        |- Database: `taskmanager`
 
-- Database: `taskmanager`Open `src/main/resources/application.properties` and fill in your AWS credentials:
+| Docker Compose   | Infrastructure containerization  |
 
-- Username: `admin`
-
-- Password: `admin````properties
-
-aws.ses.access-key=your-access-key
-
-**4 - Configure AWS SES (email sending)**aws.ses.secret-key=your-secret-key
-
-aws.ses.region=us-east-1
-
-1. Create an IAM user at https://console.aws.amazon.com/iam with policy `AmazonSESFullAccess`aws.ses.from=your-verified-email@example.com
-
-2. Generate an access key under **Security credentials → Create access key**```
-
-3. Verify your sender email at https://console.aws.amazon.com/ses → **Verified Identities**
-
-4. Fill in `aws.ses.*` properties in `application.properties`To set up AWS SES from scratch:
+| Lombok           | Boilerplate reduction            |- Username: `admin`
 
 
+
+---**PostgreSQL connection:**- Password: `admin`
+
+
+
+## Authentication Flow
+
+
+
+```- Host: `localhost`**3 - Configure AWS SES (email sending)**
+
+┌────────┐                      ┌────────┐                    ┌───────┐
+
+│ Client │                      │  API   │                    │ Redis │- Port: `5432`
+
+└───┬────┘                      └───┬────┘                    └───┬───┘
+
+    │  POST /auth/login             │                             │- Database: `taskmanager`Open `src/main/resources/application.properties` and fill in your AWS credentials:
+
+    │  {email, password}            │                             │
+
+    │──────────────────────────────►│                             │- Username: `admin`
+
+    │                               │  Cache refresh token        │
+
+    │                               │────────────────────────────►│- Password: `admin````properties
+
+    │  {accessToken, refreshToken}  │                             │
+
+    │◄──────────────────────────────│                             │aws.ses.access-key=your-access-key
+
+    │                               │                             │
+
+    │  GET /boards (Bearer token)   │                             │**4 - Configure AWS SES (email sending)**aws.ses.secret-key=your-secret-key
+
+    │──────────────────────────────►│                             │
+
+    │  200 OK                       │                             │aws.ses.region=us-east-1
+
+    │◄──────────────────────────────│                             │
+
+    │                               │                             │1. Create an IAM user at https://console.aws.amazon.com/iam with policy `AmazonSESFullAccess`aws.ses.from=your-verified-email@example.com
+
+    │  POST /auth/refresh           │                             │
+
+    │  {refreshToken}               │                             │2. Generate an access key under **Security credentials → Create access key**```
+
+    │──────────────────────────────►│  Validate (cache-first)     │
+
+    │                               │────────────────────────────►│3. Verify your sender email at https://console.aws.amazon.com/ses → **Verified Identities**
+
+    │  {newAccessToken}             │                             │
+
+    │◄──────────────────────────────│                             │4. Fill in `aws.ses.*` properties in `application.properties`To set up AWS SES from scratch:
+
+```
+
+
+
+### Token Details
 
 **5 - Configure Google OAuth (optional)**1. Create an IAM user at https://console.aws.amazon.com/iam with policy `AmazonSESFullAccess`
 
-2. Generate an access key under **Security credentials → Create access key**
+- **Access token:** JWT signed with HMAC256, 4-hour expiry, carries user email as subject
+
+- **Refresh token:** UUID stored in PostgreSQL + cached in Redis with 7-day TTL2. Generate an access key under **Security credentials → Create access key**
+
+- **Google OAuth:** Frontend sends Google ID token → API verifies via Google public keys → creates/retrieves local user
 
 1. Go to https://console.cloud.google.com/apis/credentials3. Verify your sender email at https://console.aws.amazon.com/ses → **Verified Identities**
 
+### Security
+
 2. Create an OAuth 2.0 Client ID (Web application)
 
-3. Copy the Client ID and fill in `google.client-id` in `application.properties`---
+- `SecurityFilter` intercepts every request, validates JWT, sets `SecurityContext`
 
+- Public endpoints: `/auth/login`, `/auth/register`, `/auth/google`, `/auth/refresh`, `/auth/verify-email`, `/auth/resend-verification`, `/auth/forgot-password`, `/auth/reset-password`3. Copy the Client ID and fill in `google.client-id` in `application.properties`---
 
+- All other endpoints require `Authorization: Bearer <token>`
+
+- CORS restricted to configured frontend URLs with `allowCredentials(true)`
+
+- Password reset invalidates **all** refresh tokens for the user
 
 ---## Making requests
 
+---
 
+
+
+## Email Templates
 
 ## Making requestsOpen Swagger UI at http://localhost:8080/swagger-ui.html or use any HTTP client.
 
+HTML emails sent via AWS SES with Thymeleaf template engine:
 
 
-Open Swagger UI at http://localhost:8080/swagger-ui.html or use any HTTP client.All protected endpoints require the header:
 
+| Template                   | Trigger                        | Token Expiry |
 
+| -------------------------- | ------------------------------ | ------------ |Open Swagger UI at http://localhost:8080/swagger-ui.html or use any HTTP client.All protected endpoints require the header:
+
+| `email-verification.html`  | Registration, resend           | 24 hours     |
+
+| `password-reset.html`      | Forgot password                | 30 minutes   |
+
+| `member-invite.html`       | Workspace/board invitation     | —            |
 
 All protected endpoints require the header:```
 
+Templates location: `src/main/resources/templates/`
+
 Authorization: Bearer <access_token>
+
+---
 
 `````
 
+## Audit Logging
+
 Authorization: Bearer <access_token>
+
+All authentication events are persisted to the `audit_logs` table:
 
 ```````---
 
+| Action           | Trigger                    | Severity |
+
+| ---------------- | -------------------------- | -------- |
+
+| `LOGIN`          | Successful login           | INFO     |
+
+| `REGISTER`       | New account created        | INFO     |---## Authentication flow
+
+| `LOGOUT`         | Single device logout       | INFO     |
+
+| `LOGOUT_ALL`     | Global logout              | WARN     |
+
+| `TOKEN_REFRESH`  | Access token refreshed     | INFO     |
+
+| `PASSWORD_RESET` | Password changed via reset | WARN     |## Authentication flow**1 - Register an account**
+
+| `EMAIL_VERIFIED` | Email verification success | INFO     |
 
 
----## Authentication flow
 
-
-
-## Authentication flow**1 - Register an account**
-
-
+Each record stores: action, email, IP address, user agent, details, timestamp.
 
 ### Standard registration```
 
+---
+
 POST > http://localhost:8080/auth/register
+
+## Pagination
 
 **1 - Register an account**```
 
+Optional pagination on listing endpoints — backward compatible:
 
 
-``````json
+
+```
+
+GET /boards?workspaceId=xxx                    → List<BoardResponseDTO>``````json
+
+GET /boards?workspaceId=xxx&page=0&size=20     → Page<BoardResponseDTO>
 
 POST /auth/register{
 
-```  "name": "John Doe",
+GET /boards/{id}/lists/{id}/cards              → List<CardResponseDTO>
+
+GET /boards/{id}/lists/{id}/cards?page=0&size=50 → Page<CardResponseDTO>```  "name": "John Doe",
+
+```
 
   "username": "johndoe",
 
+If `page` parameter is omitted, returns full list (no breaking change for existing clients).
+
 ```json  "email": "john@example.com",
+
+---
 
 {  "password": "secret123",
 
+## Member System
+
   "name": "John Doe",  "confirmPassword": "secret123"
+
+Two-level access control:
 
   "username": "johndoe",}
 
-  "email": "john@example.com",```
+1. **Workspace members** — can see/create boards in the workspace
 
-  "password": "secret123",
+2. **Board members** — can see/create lists and cards in the board  "email": "john@example.com",```
 
-  "confirmPassword": "secret123"Response `201 Created`:
 
-}
 
-``````json
+Rules:  "password": "secret123",
 
-{
+- To be invited to a **board**, user must already be a **workspace member**
+
+- Only the **owner** can invite/remove members  "confirmPassword": "secret123"Response `201 Created`:
+
+- Owner cannot be removed
+
+- Invitation sends an HTML email notification}
+
+
+
+---``````json
+
+
+
+_Last updated: March 18, 2026_{
+
 
 Response `201 Created`:  "message": "Registration successful! Please check your email to verify your account."
 
