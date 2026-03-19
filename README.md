@@ -1,394 +1,707 @@
-# Task Manager API# 📋 Task Manager API# 📋 Task Manager API# Task Manager API
+# 📋 Task Manager API# Task Manager API# 📋 Task Manager API# 📋 Task Manager API# Task Manager API
 
+[![Java](https://img.shields.io/badge/Java-17-ED8B00?style=flat&logo=openjdk&logoColor=white)](https://openjdk.org/)Java · Spring Boot · Spring Security · JWT · Redis · PostgreSQL · Docker · AWS SES · Google OAuth[![Java](https://img.shields.io/badge/Java-17-ED8B00?style=flat&logo=openjdk&logoColor=white)](https://openjdk.org/)[![Java](https://img.shields.io/badge/Java-17-ED8B00?style=flat&logo=openjdk&logoColor=white)](https://openjdk.org/)Java · Spring Boot · Spring Security · JWT · Redis · PostgreSQL · Docker · AWS SES
 
+[![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.5-6DB33F?style=flat&logo=springboot&logoColor=white)](https://spring.io/projects/spring-boot)
 
-Java · Spring Boot · Spring Security · JWT · Redis · PostgreSQL · Docker · AWS SES · Google OAuth[![Java](https://img.shields.io/badge/Java-17-ED8B00?style=flat&logo=openjdk&logoColor=white)](https://openjdk.org/)[![Java](https://img.shields.io/badge/Java-17-ED8B00?style=flat&logo=openjdk&logoColor=white)](https://openjdk.org/)Java · Spring Boot · Spring Security · JWT · Redis · PostgreSQL · Docker · AWS SES
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?style=flat&logo=postgresql&logoColor=white)](https://www.postgresql.org/)---[![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.5-6DB33F?style=flat&logo=springboot&logoColor=white)](https://spring.io/projects/spring-boot)
 
+[![Redis](https://img.shields.io/badge/Redis-7-DC382D?style=flat&logo=redis&logoColor=white)](https://redis.io/)
 
+[![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)## Passo a passo[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?style=flat&logo=postgresql&logoColor=white)](https://www.postgresql.org/)[![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.5-6DB33F?style=flat&logo=springboot&logoColor=white)](https://spring.io/projects/spring-boot)
 
----[![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.5-6DB33F?style=flat&logo=springboot&logoColor=white)](https://spring.io/projects/spring-boot)
+A production-ready **RESTful API** for task management built with Spring Boot. Features JWT + refresh token authentication, Google OAuth 2.0, workspace/board/list/card hierarchy, real-time member collaboration, HTML email notifications via AWS SES, and comprehensive audit logging.**1 — Instale o Docker**[![Redis](https://img.shields.io/badge/Redis-7-DC382D?style=flat&logo=redis&logoColor=white)](https://redis.io/)
 
+---https://www.docker.com[![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?style=flat&logo=postgresql&logoColor=white)](https://www.postgresql.org/)---
 
+## 🏗️ Architecture**2 — Configure o ambiente**A production-ready **RESTful API** for task management built with Spring Boot. Features JWT + refresh token authentication, Google OAuth 2.0, workspace/board/list/card hierarchy, real-time member collaboration, HTML email notifications, and comprehensive audit logging.[![Redis](https://img.shields.io/badge/Redis-7-DC382D?style=flat&logo=redis&logoColor=white)](https://redis.io/)
 
-## Passo a passo[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?style=flat&logo=postgresql&logoColor=white)](https://www.postgresql.org/)[![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.5-6DB33F?style=flat&logo=springboot&logoColor=white)](https://spring.io/projects/spring-boot)
+````````Copie o arquivo de exemplo e preencha com seus valores:---[![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)<!-- Add your architecture diagram image here -->
 
+┌──────────────┐       ┌──────────────┐       ┌──────────────┐
 
+│   Frontend   │◄─────►│  Spring Boot │◄─────►│  PostgreSQL  │```````bash## 🏗️ Architecture<!-- ![Diagram](diagram.png) -->
 
-**1 — Instale o Docker**[![Redis](https://img.shields.io/badge/Redis-7-DC382D?style=flat&logo=redis&logoColor=white)](https://redis.io/)
+│   (Client)   │  REST │     API      │  JPA  │   Database   │
 
+└──────────────┘       └──────┬───────┘       └──────────────┘cp src/main/resources/application-example.properties src/main/resources/application.properties
 
+                              │
 
-https://www.docker.com[![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?style=flat&logo=postgresql&logoColor=white)](https://www.postgresql.org/)---
+                    ┌─────────┼─────────┐``````A production-ready **RESTful API** for task management built with Spring Boot. Features JWT + refresh token authentication, Google OAuth 2.0, workspace/board/list/card hierarchy, real-time member collaboration, HTML email notifications, and comprehensive audit logging.
 
+                    │         │         │
 
-
-**2 — Configure o ambiente**A production-ready **RESTful API** for task management built with Spring Boot. Features JWT + refresh token authentication, Google OAuth 2.0, workspace/board/list/card hierarchy, real-time member collaboration, HTML email notifications, and comprehensive audit logging.[![Redis](https://img.shields.io/badge/Redis-7-DC382D?style=flat&logo=redis&logoColor=white)](https://redis.io/)
-
-
-
-Copie o arquivo de exemplo e preencha com seus valores:---[![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)<!-- Add your architecture diagram image here -->
-
-
-
-```bash## 🏗️ Architecture<!-- ![Diagram](diagram.png) -->
-
-cp src/main/resources/application-example.properties src/main/resources/application.properties
-
-``````A production-ready **RESTful API** for task management built with Spring Boot. Features JWT + refresh token authentication, Google OAuth 2.0, workspace/board/list/card hierarchy, real-time member collaboration, HTML email notifications, and comprehensive audit logging.
-
-
-
-Edite `application.properties` com suas credenciais (JWT secret, AWS SES keys, Google Client ID).┌──────────────┐       ┌──────────────┐       ┌──────────────┐
-
-
-
-**3 — Suba a infraestrutura**│   Angular    │◄─────►│  Spring Boot │◄─────►│  PostgreSQL  │---
-
-
-
-```bash│  (Frontend)  │  REST │     API      │  JPA  │   Database   │
-
-docker-compose up -d
-
-```└──────────────┘       └──────┬───────┘       └──────────────┘---
-
-
-
-Após executar, os seguintes serviços estarão disponíveis:                              │
-
-
-
-| Serviço    | Porta | URL                                   |                    ┌─────────┼─────────┐## Setup
-
-| ---------- | ----- | ------------------------------------- |
-
-| API        | 8080  | http://localhost:8080                 |                    │         │         │
-
-| Swagger UI | 8080  | http://localhost:8080/swagger-ui.html |
-
-| PostgreSQL | 5432  | localhost:5432                        |               ┌────▼───┐ ┌──▼───┐ ┌───▼────┐## 🏗️ Architecture
-
-| Redis      | 6379  | localhost:6379                        |
+               ┌────▼───┐ ┌──▼───┐ ┌───▼────┐
 
                │ Redis  │ │ AWS  │ │ Google │
 
-**Conexão PostgreSQL:**
+               │ Cache  │ │ SES  │ │ OAuth  │Edite `application.properties` com suas credenciais (JWT secret, AWS SES keys, Google Client ID).┌──────────────┐       ┌──────────────┐       ┌──────────────┐
 
-               │ Cache  │ │ SES  │ │ OAuth  │**1 — Install Docker**
+               └────────┘ └──────┘ └────────┘
 
-| Campo    | Valor         |
+````````
 
-| -------- | ------------- |               └────────┘ └──────┘ └────────┘
+### Module Structure**3 — Suba a infraestrutura**│ Angular │◄─────►│ Spring Boot │◄─────►│ PostgreSQL │---
 
-| Host     | `localhost`   |
-
-| Porta    | `5432`        |```
-
-| Database | `taskmanager` |
-
-| Usuário  | `admin`       |### Module Structure┌──────────────┐ ┌──────────────┐ ┌──────────────┐https://www.docker.com
-
-| Senha    | `admin`       |
-
-````│ Angular    │◄─────►│  Spring Boot │◄─────►│  PostgreSQL  │
-
-**4 — Inicie a API**
+````
 
 src/main/java/com/example/taskmanagerapi/
 
-```bash
-
-./mvnw spring-boot:run├── config/          # OpenAPI & Redis configuration│  (Frontend)  │  REST │     API      │  JPA  │   Database   │**2 — Configure AWS SES (email sending)**
-
-```
+├── config/          # OpenAPI & Redis configuration```bash│  (Frontend)  │  REST │     API      │  JPA  │   Database   │
 
 ├── infra/
 
-Ou build + run:
+│   ├── cors/        # CORS policydocker-compose up -d
 
-│   ├── cors/        # CORS policy└──────────────┘       └──────┬───────┘       └──────────────┘
+│   ├── exception/   # Global exception handler
 
-```bash
+│   └── security/    # JWT filter, token service, security config```└──────────────┘       └──────┬───────┘       └──────────────┘---
 
-./mvnw clean package -DskipTests│   ├── exception/   # Global exception handler
+└── modules/
 
-java -jar target/task-manager-api-1.0.0.jar
+    ├── auth/        # Authentication, users, email, audit
 
-```│   └── security/    # JWT filter, token service, security config                              │Open `src/main/resources/application.properties` and fill in your AWS credentials:
+    ├── workspaces/  # Workspace CRUD + members
 
-
-
----└── modules/
-
-
-
-## AWS SES (envio de e-mails)    ├── auth/        # Authentication, users, email, audit                    ┌─────────┼─────────┐
-
-
-
-1. Crie um IAM user em https://console.aws.amazon.com/iam com a policy `AmazonSESFullAccess`    ├── workspaces/  # Workspace CRUD + members
-
-2. Gere uma access key em **Security credentials → Create access key**
-
-3. Verifique o e-mail remetente em https://console.aws.amazon.com/ses → **Verified Identities**    ├── boards/      # Board CRUD + members                    │         │         │```properties
-
-4. Preencha em `application.properties`:
+    ├── boards/      # Board CRUD + membersApós executar, os seguintes serviços estarão disponíveis:                              │
 
     ├── lists/       # List (column) CRUD
 
-```properties
+    └── cards/       # Card CRUD + drag-and-drop
 
-aws.ses.access-key=your-access-key    └── cards/       # Card CRUD + drag-and-drop               ┌────▼───┐ ┌──▼───┐ ┌───▼────┐aws.ses.access-key=your-access-key
+````
 
-aws.ses.secret-key=your-secret-key
+| Serviço | Porta | URL | ┌─────────┼─────────┐## Setup
 
-aws.ses.region=us-east-1````
+---
 
-aws.ses.from=your-verified-email@example.com
+| ---------- | ----- | ------------------------------------- |
 
-```               │ Redis  │ │ AWS  │ │ Google │aws.ses.secret-key=your-secret-key
+## ✨ Features
 
+| API | 8080 | http://localhost:8080 | │ │ │
 
+| Category | Details |
 
-> **Nota:** AWS SES inicia em **Sandbox mode** — só envia para e-mails verificados. Solicite acesso de produção no console SES para enviar para qualquer destinatário.---
+| ---------------------- | ------------------------------------------------------------------ || Swagger UI | 8080 | http://localhost:8080/swagger-ui.html |
 
+| **Authentication** | JWT access tokens (4h) + refresh tokens (7d, Redis-cached) |
 
+| **Google OAuth** | One-click sign-in with automatic account creation || PostgreSQL | 5432 | localhost:5432 | ┌────▼───┐ ┌──▼───┐ ┌───▼────┐## 🏗️ Architecture
 
----               │ Cache  │ │ SES  │ │ OAuth  │aws.ses.region=us-east-1
+| **Email Verification** | HTML email templates via AWS SES + Thymeleaf |
 
+| **Password Reset** | Secure token-based flow with 30-minute expiry || Redis | 6379 | localhost:6379 |
 
+| **Workspaces** | Multi-workspace support with member roles (OWNER, MEMBER) |
 
-## Google OAuth (opcional)## ✨ Features
+| **Boards** | Kanban boards within workspaces | │ Redis │ │ AWS │ │ Google │
 
+| **Lists** | Ordered columns with drag-and-drop reordering |
 
+| **Cards** | Cards with status (ACTIVE, ARCHIVED, COMPLETED) + cross-list moves |**Conexão PostgreSQL:**
 
-1. Acesse https://console.cloud.google.com/apis/credentials               └────────┘ └──────┘ └────────┘aws.ses.from=your-verified-email@example.com
+| **Members** | Workspace & board-level access control with HTML invite emails |
 
-2. Crie um OAuth 2.0 Client ID (Web application)
+| **Pagination** | Optional pagination on listing endpoints (`?page=0&size=20`) | │ Cache │ │ SES │ │ OAuth │**1 — Install Docker**
 
-3. Copie o Client ID e preencha `google.client-id` em `application.properties`| Category | Details |
+| **Audit Logging** | All auth events persisted to database for security tracking |
 
+| **API Documentation** | Interactive Swagger UI with detailed schemas || Campo | Valor |
 
+---| -------- | ------------- | └────────┘ └──────┘ └────────┘
 
----|----------|---------|````
+## 🛠️ Tech Stack| Host | `localhost` |
 
+- **Runtime:** Java 17, Spring Boot 3.5| Porta | `5432` |```
 
+- **Database:** PostgreSQL 16 (JPA/Hibernate)
 
-## Fazendo requisições| **Authentication** | JWT access tokens (4h) + refresh tokens (7d, Redis-cached) |
+- **Cache:** Redis 7 (refresh token caching via Jedis)| Database | `taskmanager` |
 
+- **Auth:** JWT (`com.auth0:java-jwt`), Google OAuth (`google-api-client`)
 
+- **Email:** AWS SES + Thymeleaf HTML templates| Usuário | `admin` |### Module Structure┌──────────────┐ ┌──────────────┐ ┌──────────────┐https://www.docker.com
 
-Abra o Swagger UI em http://localhost:8080/swagger-ui.html ou use qualquer cliente HTTP.| **Google OAuth** | One-click sign-in with automatic account creation |### Module StructureTo get these credentials, see the [AWS SES setup guide](#aws-ses-setup) below.
+- **Docs:** Springdoc OpenAPI 2.8 (Swagger UI)
 
+- **Build:** Maven with Lombok annotation processing| Senha | `admin` |
 
+- **Container:** Docker + Docker Compose
 
-Todos os endpoints protegidos exigem o header:| **Email Verification** | HTML email templates via AWS SES + Thymeleaf |
+````````│ Angular    │◄─────►│  Spring Boot │◄─────►│  PostgreSQL  │
 
+---
 
+**4 — Inicie a API**
 
-```| **Password Reset** | Secure token-based flow with 30-minute expiry |````**3 — Run the application**
+## 🚀 Getting Started
 
-Authorization: Bearer <access_token>
+src/main/java/com/example/taskmanagerapi/
 
-```| **Workspaces** | Multi-workspace support with member roles (OWNER, MEMBER) |
+### Prerequisites
 
+```bash
 
+- Java 17+
 
----| **Boards** | Kanban boards within workspaces |src/main/java/com/example/taskmanagerapi/
+- Docker & Docker Compose (for PostgreSQL + Redis)./mvnw spring-boot:run├── config/          # OpenAPI & Redis configuration│  (Frontend)  │  REST │     API      │  JPA  │   Database   │**2 — Configure AWS SES (email sending)**
 
+- AWS account with SES configured (for emails)
 
+- Google Cloud project with OAuth 2.0 client ID (optional, for Google login)```````
 
-## Fluxo de autenticação| **Lists** | Ordered columns with drag-and-drop reordering |
 
 
+### 1. Clone & configure├── infra/
 
-**1 — Registre uma conta**| **Cards** | Cards with status (ACTIVE, ARCHIVED, COMPLETED) + cross-list moves |├── config/ # OpenAPI & Redis configurationOpen a terminal in the project root and run:
 
 
+```bashOu build + run:
 
-```| **Members** | Workspace & board-level access control with HTML invite emails |
+git clone https://github.com/reazew/task-manager-api.git
 
-POST > http://localhost:8080/auth/register
+cd task-manager-api│ ├── cors/ # CORS policy└──────────────┘ └──────┬───────┘ └──────────────┘
 
-```| **Pagination** | Optional pagination on listing endpoints (`?page=0&size=20`) |├── infra/
 
 
-
-```json| **Audit Logging** | All auth events persisted to database for security tracking |
-
-{
-
-  "name": "John Doe",| **API Documentation** | Interactive Swagger UI with detailed schemas |│ ├── cors/ # CORS policy```bash
-
-  "username": "johndoe",
-
-  "email": "john@example.com",---│ ├── exception/ # Global exception handlerdocker-compose up -d
-
-  "password": "secret123",
-
-  "confirmPassword": "secret123"## 🛠️ Tech Stack│ └── security/ # JWT filter, token service, security config```
-
-}
-
-```- **Runtime:** Java 17, Spring Boot 3.5└── modules/
-
-
-
-Um e-mail de verificação será enviado para o endereço informado.- **Database:** PostgreSQL 16 (JPA/Hibernate)
-
-
-
-**2 — Verifique o e-mail**- **Cache:** Redis 7 (refresh token caching via Jedis) ├── auth/ # Authentication, users, email, auditAfter running, the following services will be available:
-
-
-
-```- **Auth:** JWT (`com.auth0:java-jwt`), Google OAuth (`google-api-client`)
-
-POST > http://localhost:8080/auth/verify-email
-
-```- **Email:** AWS SES + Thymeleaf HTML templates ├── workspaces/ # Workspace CRUD + members
-
-
-
-```json- **Docs:** Springdoc OpenAPI 2.8 (Swagger UI)
-
-{ "token": "<token_do_email>" }
-
-```- **Build:** Maven with Lombok annotation processing ├── boards/ # Board CRUD + members| Service | Port | URL |
-
-
-
-**3 — Faça login**- **Container:** Docker + Docker Compose
-
-
-
-```  ├── lists/ # List (column) CRUD| ---------- | ---- | ------------------------------------- |
-
-POST > http://localhost:8080/auth/login
-
-```---
-
-
-
-```json    └── cards/       # Card CRUD + drag-and-drop| API        | 8080 | http://localhost:8080                 |
-
-{ "emailOrUsername": "johndoe", "password": "secret123" }
-
-```## 🚀 Getting Started
-
-
-
-Response:````| Swagger UI | 8080 | http://localhost:8080/swagger-ui.html |
-
-
-
-```json### Prerequisites
-
-{
-
-  "name": "John Doe",| PostgreSQL | 5432 | localhost:5432                        |
-
-  "accessToken": "<access_token>",
-
-  "refreshToken": "<refresh_token>"- Java 17+
-
-}
-
-```- Docker & Docker Compose (for PostgreSQL + Redis)---| Redis      | 6379 | localhost:6379                        |
-
-
-
-O access token expira em **4 horas**. Use o refresh token para obter um novo:- AWS account with SES configured (for emails)
-
-
-
-```- Google Cloud project with OAuth 2.0 client ID (for Google login)
-
-POST > http://localhost:8080/auth/refresh
-
-```
-
-
-
-```json### 1. Clone & configure## ✨ Features**PostgreSQL connection:**
-
-{ "refreshToken": "<refresh_token>" }
-
-```
-
-
-
----```bash
-
-
-
-## Exemplo de usogit clone https://github.com/jonasmessias/spring-task-manager-api.git
-
-
-
-**Crie um workspace**cd spring-task-manager-api| Category | Details || Field    | Value         |
-
-
-
-```
-
-POST > http://localhost:8080/workspaces
-
-Authorization: Bearer <access_token># Copy the example config and fill in your secrets|----------|---------|| -------- | ------------- |
-
-```
+# Copy the example config and fill in your secrets`````bash
 
 cp src/main/resources/application-example.properties src/main/resources/application.properties
 
-```json
+```./mvnw clean package -DskipTests│   ├── exception/   # Global exception handler
+
+
+
+Edit `application.properties` with your credentials:java -jar target/task-manager-api-1.0.0.jar
+
+
+
+- PostgreSQL connection```│   └── security/    # JWT filter, token service, security config                              │Open `src/main/resources/application.properties` and fill in your AWS credentials:
+
+- Redis connection
+
+- JWT secret key
+
+- AWS SES credentials
+
+- Google OAuth client ID---└── modules/
+
+- Frontend URLs
+
+
+
+### 2. Start infrastructure
+
+## AWS SES (envio de e-mails)    ├── auth/        # Authentication, users, email, audit                    ┌─────────┼─────────┐
+
+```bash
+
+docker-compose up -d    # Starts PostgreSQL + Redis
+
+```
+
+1. Crie um IAM user em https://console.aws.amazon.com/iam com a policy `AmazonSESFullAccess`    ├── workspaces/  # Workspace CRUD + members
+
+After running, the following services will be available:
+
+2. Gere uma access key em **Security credentials → Create access key**
+
+| Service    | Port | URL                                  |
+
+| ---------- | ---- | ------------------------------------ |3. Verifique o e-mail remetente em https://console.aws.amazon.com/ses → **Verified Identities**    ├── boards/      # Board CRUD + members                    │         │         │```properties
+
+| PostgreSQL | 5432 | `localhost:5432` (db: `taskmanager`) |
+
+| Redis      | 6379 | `localhost:6379`                     |4. Preencha em `application.properties`:
+
+
+
+**PostgreSQL connection:**    ├── lists/       # List (column) CRUD
+
+
+
+| Field    | Value         |```properties
+
+| -------- | ------------- |
+
+| Host     | `localhost`   |aws.ses.access-key=your-access-key    └── cards/       # Card CRUD + drag-and-drop               ┌────▼───┐ ┌──▼───┐ ┌───▼────┐aws.ses.access-key=your-access-key
+
+| Port     | `5432`        |
+
+| Database | `taskmanager` |aws.ses.secret-key=your-secret-key
+
+| Username | `admin`       |
+
+| Password | `admin`       |aws.ses.region=us-east-1````
+
+
+
+### 3. Run the APIaws.ses.from=your-verified-email@example.com
+
+
+
+```bash```               │ Redis  │ │ AWS  │ │ Google │aws.ses.secret-key=your-secret-key
+
+# Using Maven Wrapper
+
+./mvnw spring-boot:run
+
+
+
+# Or build and run the JAR> **Nota:** AWS SES inicia em **Sandbox mode** — só envia para e-mails verificados. Solicite acesso de produção no console SES para enviar para qualquer destinatário.---
+
+./mvnw clean package -DskipTests
+
+java -jar target/task-manager-api-1.0.0.jar
+
+```
+
+---               │ Cache  │ │ SES  │ │ OAuth  │aws.ses.region=us-east-1
+
+The API will be available at `http://localhost:8080`.
+
+
+
+### 4. Explore the API
+
+## Google OAuth (opcional)## ✨ Features
+
+Open **Swagger UI**: [http://localhost:8080/swagger-ui.html](http://localhost:8080/swagger-ui.html)
+
+
+
+---
+
+1. Acesse https://console.cloud.google.com/apis/credentials               └────────┘ └──────┘ └────────┘aws.ses.from=your-verified-email@example.com
+
+## 📡 API Endpoints
+
+2. Crie um OAuth 2.0 Client ID (Web application)
+
+### Authentication
+
+3. Copie o Client ID e preencha `google.client-id` em `application.properties`| Category | Details |
+
+| Method | Endpoint                    | Description                          | Auth |
+
+| ------ | --------------------------- | ------------------------------------ | ---- |
+
+| `POST` | `/auth/register`            | Create account + verification email  | ❌   |
+
+| `POST` | `/auth/login`               | Login with email/username + password | ❌   |---|----------|---------|````
+
+| `POST` | `/auth/google`              | Login/register with Google ID token  | ❌   |
+
+| `POST` | `/auth/refresh`             | Get new access token                 | ❌   |
+
+| `POST` | `/auth/verify-email`        | Verify email with token              | ❌   |
+
+| `POST` | `/auth/resend-verification` | Resend verification email            | ❌   |## Fazendo requisições| **Authentication** | JWT access tokens (4h) + refresh tokens (7d, Redis-cached) |
+
+| `POST` | `/auth/forgot-password`     | Send password reset email            | ❌   |
+
+| `POST` | `/auth/reset-password`      | Reset password with token            | ❌   |
+
+| `POST` | `/auth/logout`              | Logout current device                | ✅   |
+
+| `POST` | `/auth/logout-all`          | Logout all devices                   | ✅   |Abra o Swagger UI em http://localhost:8080/swagger-ui.html ou use qualquer cliente HTTP.| **Google OAuth** | One-click sign-in with automatic account creation |### Module StructureTo get these credentials, see the [AWS SES setup guide](#aws-ses-setup) below.
+
+
+
+### Workspaces
+
+
+
+| Method   | Endpoint                              | Description                      | Auth |Todos os endpoints protegidos exigem o header:| **Email Verification** | HTML email templates via AWS SES + Thymeleaf |
+
+| -------- | ------------------------------------- | -------------------------------- | ---- |
+
+| `POST`   | `/workspaces`                         | Create workspace                 | ✅   |
+
+| `GET`    | `/workspaces`                         | List user's workspaces           | ✅   |
+
+| `GET`    | `/workspaces/{id}`                    | Get workspace details            | ✅   |```| **Password Reset** | Secure token-based flow with 30-minute expiry |````**3 — Run the application**
+
+| `PUT`    | `/workspaces/{id}`                    | Update workspace                 | ✅   |
+
+| `DELETE` | `/workspaces/{id}`                    | Delete workspace                 | ✅   |Authorization: Bearer <access_token>
+
+| `POST`   | `/workspaces/{id}/members`           | Invite member (sends HTML email) | ✅   |
+
+| `GET`    | `/workspaces/{id}/members`           | List members                     | ✅   |```| **Workspaces** | Multi-workspace support with member roles (OWNER, MEMBER) |
+
+| `DELETE` | `/workspaces/{id}/members/{userId}`  | Remove member                    | ✅   |
+
+
+
+### Boards
+
+---| **Boards** | Kanban boards within workspaces |src/main/java/com/example/taskmanagerapi/
+
+| Method   | Endpoint                              | Description                              | Auth |
+
+| -------- | ------------------------------------- | ---------------------------------------- | ---- |
+
+| `POST`   | `/boards?workspaceId={id}`            | Create board                             | ✅   |
+
+| `GET`    | `/boards?workspaceId={id}`            | List boards (supports `?page=0&size=20`) | ✅   |## Fluxo de autenticação| **Lists** | Ordered columns with drag-and-drop reordering |
+
+| `GET`    | `/boards/{id}`                        | Get board with lists & cards             | ✅   |
+
+| `PUT`    | `/boards/{id}`                        | Update board                             | ✅   |
+
+| `DELETE` | `/boards/{id}`                        | Delete board                             | ✅   |
+
+| `POST`   | `/boards/{id}/members`               | Invite member (sends HTML email)         | ✅   |**1 — Registre uma conta**| **Cards** | Cards with status (ACTIVE, ARCHIVED, COMPLETED) + cross-list moves |├── config/ # OpenAPI & Redis configurationOpen a terminal in the project root and run:
+
+| `GET`    | `/boards/{id}/members`               | List members                             | ✅   |
+
+| `DELETE` | `/boards/{id}/members/{userId}`      | Remove member                            | ✅   |
+
+
+
+### Lists```| **Members** | Workspace & board-level access control with HTML invite emails |
+
+
+
+| Method   | Endpoint                           | Description | Auth |POST > http://localhost:8080/auth/register
+
+| -------- | ---------------------------------- | ----------- | ---- |
+
+| `POST`   | `/boards/{boardId}/lists`          | Create list | ✅   |```| **Pagination** | Optional pagination on listing endpoints (`?page=0&size=20`) |├── infra/
+
+| `GET`    | `/boards/{boardId}/lists`          | Get all lists | ✅ |
+
+| `PUT`    | `/boards/{boardId}/lists/{id}`     | Update list | ✅   |
+
+| `DELETE` | `/boards/{boardId}/lists/{id}`     | Delete list | ✅   |
+
+```json| **Audit Logging** | All auth events persisted to database for security tracking |
+
+### Cards
+
+{
+
+| Method   | Endpoint                                        | Description                             | Auth |
+
+| -------- | ----------------------------------------------- | --------------------------------------- | ---- |  "name": "John Doe",| **API Documentation** | Interactive Swagger UI with detailed schemas |│ ├── cors/ # CORS policy```bash
+
+| `POST`   | `/boards/{bId}/lists/{lId}/cards`               | Create card                             | ✅   |
+
+| `GET`    | `/boards/{bId}/lists/{lId}/cards`               | List cards (supports `?page=0&size=50`) | ✅   |  "username": "johndoe",
+
+| `GET`    | `/boards/{bId}/lists/{lId}/cards/{id}`          | Get card                                | ✅   |
+
+| `PUT`    | `/boards/{bId}/lists/{lId}/cards/{id}`          | Update card                             | ✅   |  "email": "john@example.com",---│ ├── exception/ # Global exception handlerdocker-compose up -d
+
+| `PATCH`  | `/boards/{bId}/lists/{lId}/cards/{id}/move`     | Move card to another list               | ✅   |
+
+| `DELETE` | `/boards/{bId}/lists/{lId}/cards/{id}`          | Delete card                             | ✅   |  "password": "secret123",
+
+
+
+---  "confirmPassword": "secret123"## 🛠️ Tech Stack│ └── security/ # JWT filter, token service, security config```
+
+
+
+## 🔐 Authentication Flow}
+
+
+
+``````- **Runtime:** Java 17, Spring Boot 3.5└── modules/
+
+┌────────┐                      ┌────────┐                    ┌───────┐
+
+│ Client │                      │  API   │                    │ Redis │
+
+└───┬────┘                      └───┬────┘                    └───┬───┘
+
+    │  POST /auth/login             │                             │Um e-mail de verificação será enviado para o endereço informado.- **Database:** PostgreSQL 16 (JPA/Hibernate)
+
+    │  {email, password}            │                             │
+
+    │──────────────────────────────►│                             │
+
+    │                               │  Create refresh token       │
+
+    │                               │────────────────────────────►│**2 — Verifique o e-mail**- **Cache:** Redis 7 (refresh token caching via Jedis) ├── auth/ # Authentication, users, email, auditAfter running, the following services will be available:
+
+    │  {accessToken, refreshToken}  │                             │
+
+    │◄──────────────────────────────│                             │
+
+    │                               │                             │
+
+    │  GET /boards (Bearer token)   │                             │```- **Auth:** JWT (`com.auth0:java-jwt`), Google OAuth (`google-api-client`)
+
+    │──────────────────────────────►│                             │
+
+    │  200 OK                       │                             │POST > http://localhost:8080/auth/verify-email
+
+    │◄──────────────────────────────│                             │
+
+    │                               │                             │```- **Email:** AWS SES + Thymeleaf HTML templates ├── workspaces/ # Workspace CRUD + members
+
+    │  POST /auth/refresh           │                             │
+
+    │  {refreshToken}               │                             │
+
+    │──────────────────────────────►│  Validate from cache        │
+
+    │                               │────────────────────────────►│```json- **Docs:** Springdoc OpenAPI 2.8 (Swagger UI)
+
+    │  {newAccessToken}             │                             │
+
+    │◄──────────────────────────────│                             │{ "token": "<token_do_email>" }
+
+```
+
+```- **Build:** Maven with Lombok annotation processing ├── boards/ # Board CRUD + members| Service | Port | URL |
+
+---
+
+
+
+## 📧 Email Templates
+
+**3 — Faça login**- **Container:** Docker + Docker Compose
+
+The API sends HTML emails using Thymeleaf templates via AWS SES:
+
+
+
+| Template                   | Trigger                           | Expiry     |
+
+| -------------------------- | --------------------------------- | ---------- |```  ├── lists/ # List (column) CRUD| ---------- | ---- | ------------------------------------- |
+
+| `email-verification.html`  | Registration, resend verification | 24 hours   |
+
+| `password-reset.html`      | Forgot password                   | 30 minutes |POST > http://localhost:8080/auth/login
+
+| `member-invite.html`       | Workspace/board member invitation | —          |
+
+```---
+
+Templates are located in `src/main/resources/templates/`.
+
+
+
+---
+
+```json    └── cards/       # Card CRUD + drag-and-drop| API        | 8080 | http://localhost:8080                 |
+
+## 🐳 Docker
+
+{ "emailOrUsername": "johndoe", "password": "secret123" }
+
+### Development (infrastructure only)
+
+```## 🚀 Getting Started
+
+```bash
+
+docker-compose up -d    # PostgreSQL + Redis
+
+./mvnw spring-boot:run  # API on host
+
+```Response:````| Swagger UI | 8080 | http://localhost:8080/swagger-ui.html |
+
+
+
+### Production (full stack)
+
+
+
+```bash```json### Prerequisites
+
+docker-compose up -d    # PostgreSQL + Redis + API
+
+```{
+
+
+
+| Service    | Port | URL                                  |  "name": "John Doe",| PostgreSQL | 5432 | localhost:5432                        |
+
+| ---------- | ---- | ------------------------------------ |
+
+| API        | 8080 | http://localhost:8080                 |  "accessToken": "<access_token>",
+
+| Swagger UI | 8080 | http://localhost:8080/swagger-ui.html |
+
+| PostgreSQL | 5432 | `localhost:5432`                     |  "refreshToken": "<refresh_token>"- Java 17+
+
+| Redis      | 6379 | `localhost:6379`                     |
+
+}
+
+---
+
+```- Docker & Docker Compose (for PostgreSQL + Redis)---| Redis      | 6379 | localhost:6379                        |
+
+## ☁️ AWS SES Setup
+
+
+
+1. **Create an IAM user** at [AWS IAM Console](https://console.aws.amazon.com/iam)
+
+   - Name: `task-manager-ses`O access token expira em **4 horas**. Use o refresh token para obter um novo:- AWS account with SES configured (for emails)
+
+   - Attach policy: `AmazonSESFullAccess`
+
+   - Go to **Security credentials → Create access key**
+
+   - Select **Application running outside AWS** — copy both keys
+
+```- Google Cloud project with OAuth 2.0 client ID (for Google login)
+
+2. **Verify sender email** at [AWS SES Console](https://console.aws.amazon.com/ses)
+
+   - Region: `us-east-1`POST > http://localhost:8080/auth/refresh
+
+   - Verified Identities → Create Identity → Email address
+
+   - Confirm the verification email AWS sends`````
+
+
+
+3. **Fill in `application.properties`**```json### 1. Clone & configure## ✨ Features**PostgreSQL connection:**
+
+
+
+   ```properties{ "refreshToken": "<refresh_token>" }
+
+   aws.ses.access-key=AKIA...
+
+   aws.ses.secret-key=...```
+
+   aws.ses.region=us-east-1
+
+   aws.ses.from=your-verified-email@example.com---```bash
+
+   ```
+
+## Exemplo de usogit clone https://github.com/jonasmessias/spring-task-manager-api.git
+
+> **Note:** AWS SES starts in **Sandbox mode** — you can only send to verified emails. To send to anyone, request production access in the SES console → **Account dashboard**.
+
+**Crie um workspace**cd spring-task-manager-api| Category | Details || Field | Value |
+
+---
+
+```
+
+## 🔑 Google OAuth Setup (optional)
+
+POST > http://localhost:8080/workspaces
+
+1. Go to [Google Cloud Console](https://console.cloud.google.com/apis/credentials)
+
+2. Create an **OAuth 2.0 Client ID** (Web application)Authorization: Bearer <access_token># Copy the example config and fill in your secrets|----------|---------|| -------- | ------------- |
+
+3. Copy the Client ID and fill in `application.properties`:
+
+```
+
+   ```properties
+
+   google.client-id=YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.comcp src/main/resources/application-example.properties src/main/resources/application.properties
+
+   ```
+
+````json
+
+---
 
 { "name": "My Workspace" }```| **Authentication** | JWT access tokens (4h) + refresh tokens (7d, Redis-cached) || Host     | `localhost`   |
 
-```
+## 📝 Error Codes
 
+````````
 
+All error responses follow the format:
 
 **Crie um board dentro do workspace**
 
-Edit `application.properties` with your credentials:| **Google OAuth** | One-click sign-in with automatic account creation || Port     | `5432`        |
+`````json
 
-```
+{Edit `application.properties` with your credentials:| **Google OAuth** | One-click sign-in with automatic account creation || Port | `5432` |
 
-POST > http://localhost:8080/boards?workspaceId=<workspace_id>
+  "code": "ERROR_CODE",
 
-Authorization: Bearer <access_token>
+  "message": "Human-readable message",````
 
-```- PostgreSQL connection| **Email Verification** | HTML email templates via AWS SES + Thymeleaf || Database | `taskmanager` |
+  "statusCode": 400,
 
+  "timestamp": "2026-03-06T12:00:00Z"POST > http://localhost:8080/boards?workspaceId=<workspace_id>
 
+}
 
-```json- Redis connection
-
-{ "name": "My Project", "type": "BOARD", "description": "Main project board" }
-
-```- JWT secret key| **Password Reset** | Secure token-based flow with 30-minute expiry || Username | `admin`       |
+```Authorization: Bearer <access_token>
 
 
 
-**Crie uma lista dentro do board**- AWS SES credentials
+| Code                      | Status | Description                    |```- PostgreSQL connection| **Email Verification** | HTML email templates via AWS SES + Thymeleaf || Database | `taskmanager` |
+
+| ------------------------- | ------ | ------------------------------ |
+
+| `INVALID_CREDENTIALS`     | 401    | Wrong email/password           |
+
+| `EMAIL_NOT_VERIFIED`      | 403    | Account not verified           |
+
+| `USE_GOOGLE_LOGIN`        | 401    | OAuth-only account             |```json- Redis connection
+
+| `INVALID_GOOGLE_TOKEN`    | 401    | Bad Google ID token            |
+
+| `EMAIL_ALREADY_EXISTS`    | 400    | Duplicate email                |{ "name": "My Project", "type": "BOARD", "description": "Main project board" }
+
+| `USERNAME_ALREADY_EXISTS` | 400    | Duplicate username             |
+
+| `PASSWORDS_DO_NOT_MATCH`  | 400    | Password mismatch              |```- JWT secret key| **Password Reset** | Secure token-based flow with 30-minute expiry || Username | `admin`       |
+
+| `INVALID_TOKEN`           | 400    | Bad verification/reset token   |
+
+| `EXPIRED_TOKEN`           | 400    | Token expired                  |
+
+| `EMAIL_NOT_FOUND`         | 404    | Email not registered           |
+
+| `EMAIL_SEND_ERROR`        | 500    | AWS SES failure                |**Crie uma lista dentro do board**- AWS SES credentials
+
+| `WORKSPACE_NOT_FOUND`     | 404    | Workspace doesn't exist        |
+
+| `BOARD_NOT_FOUND`         | 404    | Board doesn't exist            |
+
+| `LIST_NOT_FOUND`          | 404    | List doesn't exist             |
+
+| `CARD_NOT_FOUND`          | 404    | Card doesn't exist             |```- Google OAuth client ID| **Workspaces** | Multi-workspace support with member roles (OWNER, ADMIN, MEMBER) || Password | `admin`       |
+
+| `FORBIDDEN`               | 403    | Insufficient permissions       |
+
+| `VALIDATION_ERROR`        | 400    | Request body validation failed |POST > http://localhost:8080/boards/<board_id>/lists
 
 
 
-```- Google OAuth client ID| **Workspaces** | Multi-workspace support with member roles (OWNER, ADMIN, MEMBER) || Password | `admin`       |
+---Authorization: Bearer <access_token>- Frontend URLs
 
-POST > http://localhost:8080/boards/<board_id>/lists
 
-Authorization: Bearer <access_token>- Frontend URLs
 
-```
+## 📄 License````
 
-| **Boards** | Kanban boards within workspaces |
 
-```json
 
-{ "name": "To Do" }### 2. Start infrastructure
+This project is licensed under the MIT License.| **Boards** | Kanban boards within workspaces |
 
-```
+
+
+---```json
+
+
+
+**Built with ❤️ by [Jonas Messias](https://github.com/reazew)**{ "name": "To Do" }### 2. Start infrastructure
+
+
+`````
 
 | **Lists** | Ordered columns with drag-and-drop reordering |---
 
@@ -398,11 +711,11 @@ Authorization: Bearer <access_token>- Frontend URLs
 
 ```
 
-POST > http://localhost:8080/boards/<board_id>/lists/<list_id>/cardsdocker-compose up -d    # Starts PostgreSQL + Redis| **Cards** | Cards with status (ACTIVE, ARCHIVED, COMPLETED) + cross-list moves |
+POST > http://localhost:8080/boards/<board_id>/lists/<list_id>/cardsdocker-compose up -d # Starts PostgreSQL + Redis| **Cards** | Cards with status (ACTIVE, ARCHIVED, COMPLETED) + cross-list moves |
 
 Authorization: Bearer <access_token>
 
-```````
+`````````
 
 
 
@@ -906,7 +1219,7 @@ All error responses follow the format:
 
 ---
 
-````````
+`````````
 
 ## 🐳 Docker
 
