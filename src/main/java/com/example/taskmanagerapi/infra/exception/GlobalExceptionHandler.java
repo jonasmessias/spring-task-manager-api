@@ -46,6 +46,16 @@ public class GlobalExceptionHandler {
                 .body(new ErrorResponse("EMAIL_SEND_ERROR", "Failed to send email. Please try again later.", HttpStatus.INTERNAL_SERVER_ERROR.value()));
     }
 
+    /**
+     * Handles illegal argument exceptions (e.g., invalid file type, size exceeded).
+     */
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<ErrorResponse> handleIllegalArgument(IllegalArgumentException ex) {
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(new ErrorResponse("BAD_REQUEST", ex.getMessage(), HttpStatus.BAD_REQUEST.value()));
+    }
+
     // DTO records used in the response body
     public record ValidationErrorResponse(String code, String message, int statusCode, List<FieldError> errors) {}
     public record FieldError(String field, String message) {}

@@ -101,6 +101,18 @@
             <version>2.30.19</version>
         </dependency>
 
+        <!-- AWS S3 (file storage) -->
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>s3</artifactId>
+            <version>2.30.19</version>
+        </dependency>
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>s3-transfer-manager</artifactId>
+            <version>2.30.19</version>
+        </dependency>
+
         <!-- Google ID Token verification -->
         <dependency>
             <groupId>com.google.api-client</groupId>
