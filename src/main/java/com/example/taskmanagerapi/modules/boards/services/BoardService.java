@@ -1,4 +1,4 @@
-package com.example.taskmanagerapi.modules.boards.services;
+﻿package com.example.taskmanagerapi.modules.boards.services;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -12,6 +12,8 @@ import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.example.taskmanagerapi.infra.exception.ForbiddenException;
+import com.example.taskmanagerapi.infra.exception.ResourceNotFoundException;
 import com.example.taskmanagerapi.modules.auth.domain.User;
 import com.example.taskmanagerapi.modules.boards.domain.Board;
 import com.example.taskmanagerapi.modules.boards.domain.BoardType;
@@ -25,9 +27,6 @@ import com.example.taskmanagerapi.modules.workspaces.domain.Workspace;
 
 import lombok.RequiredArgsConstructor;
 
-/**
- * BoardService - Business logic for board operations
- */
 @Service
 @RequiredArgsConstructor
 public class BoardService {
@@ -37,9 +36,6 @@ public class BoardService {
     private final BoardMemberService boardMemberService;
     private final StorageService storageService;
 
-    /**
-     * Create a new board for a user within a workspace
-     */
     @Transactional
     public BoardResponseDTO createBoard(@NonNull CreateBoardDTO dto, @NonNull User owner, @NonNull Workspace workspace) {
         Board board = new Board();
@@ -50,16 +46,10 @@ public class BoardService {
         board.setWorkspace(workspace);
         
         Board savedBoard = boardRepository.save(board);
-
-        // Register owner as OWNER member
         boardMemberService.addOwner(savedBoard, owner);
-
         return new BoardResponseDTO(savedBoard);
     }
 
-    /**
-     * Get all boards for a workspace, ordered by creation date
-     */
     public List<BoardResponseDTO> getBoardsByWorkspace(@NonNull Workspace workspace) {
         return boardRepository.findByWorkspaceOrderByCreatedAtDesc(workspace)
                 .stream()
@@ -67,17 +57,11 @@ public class BoardService {
                 .collect(Collectors.toList());
     }
 
-    /**
-     * Get boards for a workspace with pagination
-     */
     public Page<BoardResponseDTO> getBoardsByWorkspace(@NonNull Workspace workspace, @NonNull Pageable pageable) {
         return boardRepository.findByWorkspaceOrderByCreatedAtDesc(workspace, pageable)
                 .map(BoardResponseDTO::new);
     }
 
-    /**
-     * Get boards by workspace and type
-     */
     public List<BoardResponseDTO> getBoardsByWorkspaceAndType(@NonNull Workspace workspace, @NonNull BoardType type) {
         return boardRepository.findByWorkspaceAndType(workspace, type)
                 .stream()
@@ -85,24 +69,35 @@ public class BoardService {
                 .collect(Collectors.toList());
     }
 
-    /**
-     * Find a board by ID
-     */
     public Optional<Board> getBoardById(@NonNull String id) {
         return boardRepository.findById(id);
     }
 
-    /**
-     * Save a board entity (used for field updates like cover)
-     */
+    public Board requireBoardById(@NonNull String id) {
+        return boardRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("BOARD_NOT_FOUND",
+                        "Board not found."));
+    }
+
+    public void requireMember(@NonNull Board board, @NonNull User user) {
+        if (!boardMemberService.isMember(board, user)) {
+            throw new ForbiddenException("FORBIDDEN",
+                    "You don't have permission to access this board.");
+        }
+    }
+
+    public void requireOwner(@NonNull Board board, @NonNull User user) {
+        if (!board.getOwner().getId().equals(user.getId())) {
+            throw new ForbiddenException("FORBIDDEN",
+                    "Only the board owner can perform this action.");
+        }
+    }
+
     public Board saveBoard(@NonNull Board board) {
         board.setUpdatedAt(LocalDateTime.now());
         return boardRepository.save(board);
     }
 
-    /**
-     * Update an existing board
-     */
     @Transactional
     public BoardResponseDTO updateBoard(@NonNull Board board, @NonNull UpdateBoardDTO dto) {
         if (dto.name() != null && !dto.name().isBlank()) {
@@ -119,36 +114,28 @@ public class BoardService {
         return new BoardResponseDTO(updatedBoard);
     }
 
-    /**
-     * Delete a board by ID â€” cascades to all lists and cards
-     */
+    
     @Transactional
     public void deleteBoard(@NonNull String id) {
         Optional<Board> boardOpt = boardRepository.findById(id);
         if (boardOpt.isPresent()) {
             Board board = Objects.requireNonNull(boardOpt.get());
 
-            // Delete board cover from S3
             if (board.getCoverUrl() != null) {
                 storageService.deleteFile(board.getCoverUrl());
             }
 
-            // Cascade: delete all lists, cards, and attachments (S3 cleanup included)
             listService.deleteAllByBoard(board);
             boardRepository.deleteById(id);
         }
     }
 
-    /**
-     * Check if a board belongs to a workspace
-     */
+    
     public boolean isBoardInWorkspace(@NonNull Board board, @NonNull Workspace workspace) {
         return board.getWorkspace().getId().equals(workspace.getId());
     }
 
-    /**
-     * Count boards in a workspace
-     */
+    
     public long countWorkspaceBoards(@NonNull Workspace workspace) {
         return boardRepository.countByWorkspace(workspace);
     }

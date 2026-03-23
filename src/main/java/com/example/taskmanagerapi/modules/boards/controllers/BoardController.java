@@ -1,7 +1,6 @@
 package com.example.taskmanagerapi.modules.boards.controllers;
 
 import java.util.List;
-import java.util.Optional;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -29,12 +28,10 @@ import com.example.taskmanagerapi.modules.boards.dto.BoardDetailDTO;
 import com.example.taskmanagerapi.modules.boards.dto.BoardResponseDTO;
 import com.example.taskmanagerapi.modules.boards.dto.CreateBoardDTO;
 import com.example.taskmanagerapi.modules.boards.dto.UpdateBoardDTO;
-import com.example.taskmanagerapi.modules.boards.services.BoardMemberService;
 import com.example.taskmanagerapi.modules.boards.services.BoardService;
 import com.example.taskmanagerapi.modules.storage.dto.UploadResponseDTO;
 import com.example.taskmanagerapi.modules.storage.services.StorageService;
 import com.example.taskmanagerapi.modules.workspaces.domain.Workspace;
-import com.example.taskmanagerapi.modules.workspaces.services.WorkspaceMemberService;
 import com.example.taskmanagerapi.modules.workspaces.services.WorkspaceService;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -57,8 +54,6 @@ public class BoardController {
     
     private final BoardService boardService;
     private final WorkspaceService workspaceService;
-    private final WorkspaceMemberService workspaceMemberService;
-    private final BoardMemberService boardMemberService;
     private final StorageService storageService;
 
     private static final String BOARD_COVER_FOLDER = "covers/boards";
@@ -74,30 +69,14 @@ public class BoardController {
         @ApiResponse(responseCode = "401", description = "Unauthorized - Invalid or missing token")
     })
     @PostMapping
-    public ResponseEntity<Object> createBoard(
+    public ResponseEntity<BoardResponseDTO> createBoard(
             @Valid @RequestBody CreateBoardDTO body,
             @Parameter(description = "Workspace ID", required = true)
             @RequestParam("workspaceId") String workspaceId,
             @AuthenticationPrincipal User user) {
-        
-        Optional<Workspace> workspaceOpt = workspaceService.getWorkspaceById(workspaceId);
-        if (workspaceOpt.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ErrorResponseDTO(
-                "WORKSPACE_NOT_FOUND", "Workspace not found.", 404
-            ));
-        }
-        
-        Workspace workspace = workspaceOpt.get();
-        
-        // Any workspace member can create boards
-        if (!workspaceMemberService.isMember(workspace, user)) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(new ErrorResponseDTO(
-                "FORBIDDEN", "You don't have permission to create boards in this workspace.", 403
-            ));
-        }
-        
-        BoardResponseDTO response = boardService.createBoard(body, user, workspace);
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        Workspace workspace = workspaceService.getWorkspaceById(workspaceId);
+        workspaceService.requireMember(workspace, user);
+        return ResponseEntity.status(HttpStatus.CREATED).body(boardService.createBoard(body, user, workspace));
     }
 
     @Operation(summary = "Get All Boards", description = "Retrieve all boards for a workspace. Any workspace member can list boards.")
@@ -110,7 +89,7 @@ public class BoardController {
         @ApiResponse(responseCode = "401", description = "Unauthorized - Invalid or missing token")
     })
     @GetMapping
-    public ResponseEntity<Object> getAllBoards(
+    public ResponseEntity<?> getAllBoards(
             @Parameter(description = "Workspace ID", required = true)
             @RequestParam("workspaceId") String workspaceId,
             @Parameter(description = "Page number (0-based). Omit for unpaginated results.")
@@ -118,30 +97,15 @@ public class BoardController {
             @Parameter(description = "Page size. Default: 20")
             @RequestParam(value = "size", required = false, defaultValue = "20") int size,
             @AuthenticationPrincipal User user) {
-        
-        Optional<Workspace> workspaceOpt = workspaceService.getWorkspaceById(workspaceId);
-        if (workspaceOpt.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ErrorResponseDTO(
-                "WORKSPACE_NOT_FOUND", "Workspace not found.", 404
-            ));
-        }
-        
-        Workspace workspace = workspaceOpt.get();
-        
-        // Any workspace member can list boards
-        if (!workspaceMemberService.isMember(workspace, user)) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(new ErrorResponseDTO(
-                "FORBIDDEN", "You don't have permission to view boards in this workspace.", 403
-            ));
-        }
-        
-        // If page parameter is provided, return paginated; otherwise return all
+        Workspace workspace = workspaceService.getWorkspaceById(workspaceId);
+        workspaceService.requireMember(workspace, user);
+
         if (page != null) {
             Pageable pageable = PageRequest.of(page, size);
             Page<BoardResponseDTO> response = boardService.getBoardsByWorkspace(workspace, pageable);
             return ResponseEntity.ok(response);
         }
-        
+
         List<BoardResponseDTO> response = boardService.getBoardsByWorkspace(workspace);
         return ResponseEntity.ok(response);
     }
@@ -157,26 +121,11 @@ public class BoardController {
         @ApiResponse(responseCode = "401", description = "Unauthorized - Invalid or missing token")
     })
     @GetMapping("/{id}")
-    public ResponseEntity<Object> getBoardById(
+    public ResponseEntity<BoardDetailDTO> getBoardById(
             @Parameter(description = "Board ID", required = true) @PathVariable @NonNull String id,
             @AuthenticationPrincipal User user) {
-        
-        Optional<Board> boardOpt = boardService.getBoardById(id);
-        
-        if (boardOpt.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ErrorResponseDTO(
-                "BOARD_NOT_FOUND", "Board not found.", 404
-            ));
-        }
-        
-        Board board = boardOpt.get();
-        
-        if (!boardMemberService.isMember(board, user)) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(new ErrorResponseDTO(
-                "FORBIDDEN", "You don't have permission to access this board.", 403
-            ));
-        }
-        
+        Board board = boardService.requireBoardById(id);
+        boardService.requireMember(board, user);
         return ResponseEntity.ok(new BoardDetailDTO(board));
     }
 
@@ -191,29 +140,13 @@ public class BoardController {
         @ApiResponse(responseCode = "401", description = "Unauthorized - Invalid or missing token")
     })
     @PutMapping("/{id}")
-    public ResponseEntity<Object> updateBoard(
+    public ResponseEntity<BoardResponseDTO> updateBoard(
             @Parameter(description = "Board ID", required = true) @PathVariable @NonNull String id,
             @Valid @RequestBody UpdateBoardDTO body,
             @AuthenticationPrincipal User user) {
-        
-        Optional<Board> boardOpt = boardService.getBoardById(id);
-        
-        if (boardOpt.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ErrorResponseDTO(
-                "BOARD_NOT_FOUND", "Board not found.", 404
-            ));
-        }
-        
-        Board board = boardOpt.get();
-        
-        if (!board.getOwner().getId().equals(user.getId())) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(new ErrorResponseDTO(
-                "FORBIDDEN", "Only the board owner can update it.", 403
-            ));
-        }
-        
-        BoardResponseDTO response = boardService.updateBoard(board, body);
-        return ResponseEntity.ok(response);
+        Board board = boardService.requireBoardById(id);
+        boardService.requireOwner(board, user);
+        return ResponseEntity.ok(boardService.updateBoard(board, body));
     }
 
     @Operation(summary = "Delete Board", description = "Delete a board by its ID. Only the board owner can delete.")
@@ -226,31 +159,14 @@ public class BoardController {
         @ApiResponse(responseCode = "401", description = "Unauthorized - Invalid or missing token")
     })
     @DeleteMapping("/{id}")
-    public ResponseEntity<Object> deleteBoard(
+    public ResponseEntity<Void> deleteBoard(
             @Parameter(description = "Board ID", required = true) @PathVariable @NonNull String id,
             @AuthenticationPrincipal User user) {
-        
-        Optional<Board> boardOpt = boardService.getBoardById(id);
-        
-        if (boardOpt.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ErrorResponseDTO(
-                "BOARD_NOT_FOUND", "Board not found.", 404
-            ));
-        }
-        
-        Board board = boardOpt.get();
-        
-        if (!board.getOwner().getId().equals(user.getId())) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(new ErrorResponseDTO(
-                "FORBIDDEN", "Only the board owner can delete it.", 403
-            ));
-        }
-        
+        Board board = boardService.requireBoardById(id);
+        boardService.requireOwner(board, user);
         boardService.deleteBoard(id);
         return ResponseEntity.noContent().build();
     }
-
-    // ── Cover endpoints ─────────────────────────────────────────────────
 
     @Operation(summary = "Upload Board Cover", description = "Upload or replace the board cover image. Only the board owner can upload. Accepts JPG, PNG and WebP up to 5MB.")
     @ApiResponses(value = {
@@ -262,26 +178,13 @@ public class BoardController {
         @ApiResponse(responseCode = "401", description = "Unauthorized")
     })
     @PutMapping(value = "/{id}/cover", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<Object> uploadBoardCover(
+    public ResponseEntity<UploadResponseDTO> uploadBoardCover(
             @Parameter(description = "Board ID", required = true) @PathVariable @NonNull String id,
             @RequestParam("file") MultipartFile file,
             @AuthenticationPrincipal User user) {
+        Board board = boardService.requireBoardById(id);
+        boardService.requireOwner(board, user);
 
-        Optional<Board> boardOpt = boardService.getBoardById(id);
-        if (boardOpt.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ErrorResponseDTO(
-                "BOARD_NOT_FOUND", "Board not found.", 404
-            ));
-        }
-
-        Board board = boardOpt.get();
-        if (!board.getOwner().getId().equals(user.getId())) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(new ErrorResponseDTO(
-                "FORBIDDEN", "Only the board owner can update the cover.", 403
-            ));
-        }
-
-        // Delete old cover if exists
         if (board.getCoverUrl() != null) {
             storageService.deleteFile(board.getCoverUrl());
         }
@@ -301,23 +204,11 @@ public class BoardController {
         @ApiResponse(responseCode = "401", description = "Unauthorized")
     })
     @DeleteMapping("/{id}/cover")
-    public ResponseEntity<Object> deleteBoardCover(
+    public ResponseEntity<Void> deleteBoardCover(
             @Parameter(description = "Board ID", required = true) @PathVariable @NonNull String id,
             @AuthenticationPrincipal User user) {
-
-        Optional<Board> boardOpt = boardService.getBoardById(id);
-        if (boardOpt.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ErrorResponseDTO(
-                "BOARD_NOT_FOUND", "Board not found.", 404
-            ));
-        }
-
-        Board board = boardOpt.get();
-        if (!board.getOwner().getId().equals(user.getId())) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(new ErrorResponseDTO(
-                "FORBIDDEN", "Only the board owner can remove the cover.", 403
-            ));
-        }
+        Board board = boardService.requireBoardById(id);
+        boardService.requireOwner(board, user);
 
         if (board.getCoverUrl() != null) {
             storageService.deleteFile(board.getCoverUrl());

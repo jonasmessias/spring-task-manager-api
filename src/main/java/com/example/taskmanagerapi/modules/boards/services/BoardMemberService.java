@@ -7,6 +7,10 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.example.taskmanagerapi.infra.exception.BusinessException;
+import com.example.taskmanagerapi.infra.exception.ConflictException;
+import com.example.taskmanagerapi.infra.exception.ForbiddenException;
+import com.example.taskmanagerapi.infra.exception.ResourceNotFoundException;
 import com.example.taskmanagerapi.modules.auth.domain.User;
 import com.example.taskmanagerapi.modules.auth.repositories.UserRepository;
 import com.example.taskmanagerapi.modules.auth.services.EmailService;
@@ -31,9 +35,6 @@ public class BoardMemberService {
     @Value("${app.frontend.url}")
     private String frontendUrl;
 
-    /**
-     * Add the owner as OWNER member when board is created
-     */
     @Transactional
     public void addOwner(Board board, User owner) {
         BoardMember member = new BoardMember();
@@ -43,25 +44,23 @@ public class BoardMemberService {
         boardMemberRepository.save(member);
     }
 
-    /**
-     * Invite a user (by email or username) to a specific board.
-     * The target user must already be a member of the parent workspace.
-     */
     @Transactional
     public BoardMemberDTO inviteMember(Board board, String emailOrUsername) {
         User target = userRepository
                 .findByEmailOrUsername(emailOrUsername, emailOrUsername)
-                .orElseThrow(() -> new IllegalArgumentException("USER_NOT_FOUND"));
+                .orElseThrow(() -> new ResourceNotFoundException("USER_NOT_FOUND",
+                        "No user found with that email or username."));
 
-        // Target must already belong to the workspace
         boolean inWorkspace = workspaceMemberRepository
                 .existsByWorkspaceAndUser(board.getWorkspace(), target);
         if (!inWorkspace) {
-            throw new IllegalArgumentException("USER_NOT_IN_WORKSPACE");
+            throw new BusinessException("USER_NOT_IN_WORKSPACE",
+                    "User must be a workspace member first.");
         }
 
         if (boardMemberRepository.existsByBoardAndUser(board, target)) {
-            throw new IllegalArgumentException("USER_ALREADY_MEMBER");
+            throw new ConflictException("USER_ALREADY_MEMBER",
+                    "User is already a member of this board.");
         }
 
         BoardMember member = new BoardMember();
@@ -70,7 +69,6 @@ public class BoardMemberService {
         member.setRole(MemberRole.MEMBER);
         BoardMemberDTO saved = new BoardMemberDTO(boardMemberRepository.save(member));
 
-        // Notify invited user by HTML email
         try {
             emailService.sendHtmlEmail(
                 target.getEmail(),
@@ -85,38 +83,34 @@ public class BoardMemberService {
                 )
             );
         } catch (Exception ignored) {
-            // Email failure should not block the invite
         }
 
         return saved;
     }
 
-    /**
-     * Remove a member from a board
-     */
     @Transactional
     public void removeMember(Board board, String userId, User requester) {
         User targetRef = buildUserRef(userId);
         BoardMember target = boardMemberRepository
                 .findByBoardAndUser(board, targetRef)
-                .orElseThrow(() -> new IllegalArgumentException("MEMBER_NOT_FOUND"));
+                .orElseThrow(() -> new ResourceNotFoundException("MEMBER_NOT_FOUND",
+                        "Member not found in this board."));
 
         if (target.getRole() == MemberRole.OWNER) {
-            throw new IllegalArgumentException("CANNOT_REMOVE_OWNER");
+            throw new ConflictException("CANNOT_REMOVE_OWNER",
+                    "The board owner cannot be removed.");
         }
 
         boolean isOwner = board.getOwner().getId().equals(requester.getId());
         boolean isSelf = userId.equals(requester.getId());
         if (!isOwner && !isSelf) {
-            throw new SecurityException("FORBIDDEN");
+            throw new ForbiddenException("FORBIDDEN",
+                    "You don't have permission to remove this member.");
         }
 
         boardMemberRepository.delete(target);
     }
 
-    /**
-     * List all members of a board
-     */
     public List<BoardMemberDTO> listMembers(Board board) {
         return boardMemberRepository.findByBoard(board)
                 .stream()
@@ -124,9 +118,6 @@ public class BoardMemberService {
                 .toList();
     }
 
-    /**
-     * Check if a user is a member (or owner) of the board
-     */
     public boolean isMember(Board board, User user) {
         return boardMemberRepository.existsByBoardAndUser(board, user);
     }
