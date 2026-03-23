@@ -9,6 +9,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.example.taskmanagerapi.infra.exception.ResourceNotFoundException;
 import com.example.taskmanagerapi.modules.cards.domain.Card;
 import com.example.taskmanagerapi.modules.cards.domain.CardStatus;
 import com.example.taskmanagerapi.modules.cards.dto.CardResponseDTO;
@@ -20,20 +21,13 @@ import com.example.taskmanagerapi.modules.lists.domain.BoardList;
 
 import lombok.RequiredArgsConstructor;
 
-/**
- * CardService - Business logic for card operations
- * Single Responsibility: Handle all card-related business logic
- */
 @Service
 @RequiredArgsConstructor
 public class CardService {
     
     private final CardRepository cardRepository;
     private final AttachmentService attachmentService;
-    
-    /**
-     * Create a new card in a list
-     */
+
     @Transactional
     public CardResponseDTO createCard(CreateCardDTO dto, BoardList list) {
         Card card = new Card();
@@ -43,7 +37,6 @@ public class CardService {
         card.setList(list);
         card.setCreatedAt(LocalDateTime.now());
 
-        // Auto-append at end if no position given
         if (dto.position() != null) {
             card.setPosition(dto.position());
         } else {
@@ -54,61 +47,53 @@ public class CardService {
         Card savedCard = cardRepository.save(card);
         return new CardResponseDTO(savedCard);
     }
-    
-    /**
-     * Get all cards from a list
-     */
+
     public List<CardResponseDTO> getCardsByList(BoardList list) {
-        List<Card> cards = cardRepository.findByListOrderByPositionAsc(list);
-        return cards.stream()
+        return cardRepository.findByListOrderByPositionAsc(list)
+                .stream()
                 .map(CardResponseDTO::new)
                 .toList();
     }
 
-    /**
-     * Get cards from a list with pagination
-     */
     public Page<CardResponseDTO> getCardsByList(BoardList list, Pageable pageable) {
         return cardRepository.findByListOrderByPositionAsc(list, pageable)
                 .map(CardResponseDTO::new);
     }
-    
-    /**
-     * Get card by ID
-     */
+
     public Optional<Card> getCardById(String id) {
         if (id == null || id.isBlank()) {
             return Optional.empty();
         }
         return cardRepository.findById(id);
     }
-    
-    /**
-     * Update a card's fields (name, description, status, position within same list)
-     */
-    @Transactional
-    public CardResponseDTO updateCard(Card card, UpdateCardDTO dto) {
-        if (dto.name() != null) {
-            card.setName(dto.name());
+
+    public Card requireCardById(String id) {
+        if (id == null || id.isBlank()) {
+            throw new ResourceNotFoundException("CARD_NOT_FOUND", "Card not found.");
         }
-        if (dto.description() != null) {
-            card.setDescription(dto.description());
-        }
-        if (dto.status() != null) {
-            card.setStatus(dto.status());
-        }
-        if (dto.position() != null) {
-            card.setPosition(dto.position());
-        }
-        card.setUpdatedAt(LocalDateTime.now());
-        
-        Card updatedCard = cardRepository.save(card);
-        return new CardResponseDTO(updatedCard);
+        return cardRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("CARD_NOT_FOUND", "Card not found."));
     }
 
-    /**
-     * Move a card to a different list (or reposition within the same list)
-     */
+    public Card requireCardByContext(String cardId, String listId, String boardId) {
+        Card card = requireCardById(cardId);
+        if (!card.getList().getId().equals(listId) || !card.getList().getBoard().getId().equals(boardId)) {
+            throw new ResourceNotFoundException("CARD_NOT_FOUND", "Card not found in this list/board.");
+        }
+        return card;
+    }
+
+    @Transactional
+    public CardResponseDTO updateCard(Card card, UpdateCardDTO dto) {
+        if (dto.name() != null) card.setName(dto.name());
+        if (dto.description() != null) card.setDescription(dto.description());
+        if (dto.status() != null) card.setStatus(dto.status());
+        if (dto.position() != null) card.setPosition(dto.position());
+        card.setUpdatedAt(LocalDateTime.now());
+        
+        return new CardResponseDTO(cardRepository.save(card));
+    }
+
     @Transactional
     public CardResponseDTO moveCard(Card card, BoardList targetList, MoveCardDTO dto) {
         card.setList(targetList);
@@ -121,29 +106,19 @@ public class CardService {
         }
 
         card.setUpdatedAt(LocalDateTime.now());
-        Card movedCard = cardRepository.save(card);
-        return new CardResponseDTO(movedCard);
+        return new CardResponseDTO(cardRepository.save(card));
     }
-    
-    /**
-     * Delete a card
-     * Also removes all attachments from S3
-     */
+
     @Transactional
     public void deleteCard(String id) {
         if (id != null && !id.isBlank()) {
-            Optional<Card> cardOpt = cardRepository.findById(id);
-            if (cardOpt.isPresent()) {
-                attachmentService.deleteAllByCard(cardOpt.get());
+            cardRepository.findById(id).ifPresent(card -> {
+                attachmentService.deleteAllByCard(card);
                 cardRepository.deleteById(id);
-            }
+            });
         }
     }
-    
-    /**
-     * Delete all cards from a list
-     * Used when deleting a list — also removes attachments from S3
-     */
+
     @Transactional
     public void deleteAllByList(BoardList list) {
         List<Card> cards = cardRepository.findByListOrderByPositionAsc(list);

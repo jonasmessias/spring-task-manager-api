@@ -10,6 +10,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.example.taskmanagerapi.infra.exception.BusinessException;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import software.amazon.awssdk.core.sync.RequestBody;
@@ -20,12 +22,6 @@ import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import software.amazon.awssdk.services.s3.presigner.model.PresignedPutObjectRequest;
 import software.amazon.awssdk.services.s3.presigner.model.PutObjectPresignRequest;
 
-/**
- * StorageService - Handles file uploads to AWS S3
- * Supports two strategies:
- *   1. Direct upload (small files: avatars, covers)
- *   2. Presigned URL (large files: attachments)
- */
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -53,14 +49,6 @@ public class StorageService {
 
     // ── Direct Upload (avatars, covers) ─────────────────────────────────
 
-    /**
-     * Upload a file directly to S3 via the API.
-     * Used for small files like avatars and board covers.
-     *
-     * @param file   the multipart file from the request
-     * @param folder the S3 folder (e.g., "avatars", "covers/boards")
-     * @return the public URL of the uploaded file
-     */
     public String uploadFile(MultipartFile file, String folder) {
         validateImage(file);
 
@@ -80,22 +68,12 @@ public class StorageService {
             return url;
 
         } catch (IOException e) {
-            throw new RuntimeException("Failed to upload file to S3", e);
+            throw new BusinessException("FILE_UPLOAD_ERROR", "Failed to upload file to S3.");
         }
     }
 
     // ── Presigned URL (attachments) ─────────────────────────────────────
 
-    /**
-     * Generate a presigned URL for direct upload from the frontend to S3.
-     * Used for large files like card attachments.
-     *
-     * @param fileName    original file name
-     * @param contentType MIME type of the file
-     * @param fileSize    size in bytes
-     * @param folder      the S3 folder (e.g., "attachments")
-     * @return a PresignedUploadResult with the URL and the generated key
-     */
     public PresignedUploadResult generatePresignedUploadUrl(String fileName, String contentType, long fileSize, String folder) {
         validateAttachment(fileName, fileSize);
 
@@ -124,9 +102,6 @@ public class StorageService {
 
     // ── Delete ──────────────────────────────────────────────────────────
 
-    /**
-     * Delete a file from S3 by its key or full URL.
-     */
     public void deleteFile(String fileUrlOrKey) {
         String key = fileUrlOrKey.contains("amazonaws.com")
                 ? extractKeyFromUrl(fileUrlOrKey)
@@ -180,9 +155,6 @@ public class StorageService {
         return folder + "/" + UUID.randomUUID() + extension;
     }
 
-    /**
-     * Build the public S3 URL for a given key.
-     */
     public String buildPublicUrl(String key) {
         return buildFileUrl(key);
     }

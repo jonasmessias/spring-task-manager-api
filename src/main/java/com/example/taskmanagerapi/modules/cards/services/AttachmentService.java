@@ -17,10 +17,6 @@ import com.example.taskmanagerapi.modules.storage.services.StorageService.Presig
 
 import lombok.RequiredArgsConstructor;
 
-/**
- * AttachmentService - Business logic for card attachments.
- * Uses presigned URLs so files upload directly to S3 from the frontend.
- */
 @Service
 @RequiredArgsConstructor
 public class AttachmentService {
@@ -30,10 +26,6 @@ public class AttachmentService {
 
     private static final String ATTACHMENTS_FOLDER = "attachments";
 
-    /**
-     * Step 1: Generate a presigned upload URL for the frontend.
-     * The API validates permissions and file metadata, then returns a temporary URL.
-     */
     public PresignedUrlResponseDTO requestUpload(String fileName, String contentType, long fileSize) {
         PresignedUploadResult result = storageService.generatePresignedUploadUrl(
                 fileName, contentType, fileSize, ATTACHMENTS_FOLDER
@@ -45,10 +37,6 @@ public class AttachmentService {
         );
     }
 
-    /**
-     * Step 2: Confirm the upload after the frontend has uploaded directly to S3.
-     * Creates the Attachment record in the database.
-     */
     @Transactional
     public AttachmentResponseDTO confirmUpload(AttachmentConfirmDTO dto, Card card, String userId) {
         Attachment attachment = new Attachment();
@@ -64,9 +52,6 @@ public class AttachmentService {
         return new AttachmentResponseDTO(saved);
     }
 
-    /**
-     * List all attachments for a card.
-     */
     public List<AttachmentResponseDTO> getAttachmentsByCard(Card card) {
         return attachmentRepository.findByCardOrderByCreatedAtDesc(card)
                 .stream()
@@ -74,16 +59,10 @@ public class AttachmentService {
                 .toList();
     }
 
-    /**
-     * Count attachments for a card.
-     */
     public long countByCard(Card card) {
         return attachmentRepository.countByCard(card);
     }
 
-    /**
-     * Delete a single attachment (removes from S3 + database).
-     */
     @Transactional
     public void deleteAttachment(String attachmentId) {
         Optional<Attachment> opt = attachmentRepository.findById(attachmentId);
@@ -94,9 +73,6 @@ public class AttachmentService {
         }
     }
 
-    /**
-     * Delete all attachments for a card (used when deleting a card).
-     */
     @Transactional
     public void deleteAllByCard(Card card) {
         List<Attachment> attachments = attachmentRepository.findByCardOrderByCreatedAtDesc(card);
