@@ -6,6 +6,9 @@ target/
 
 # Spring Boot / Secrets
 /src/main/resources/application.properties
+.env
+.env.*
+!.env.production.example
 
 ### STS ###
 .apt_generated
