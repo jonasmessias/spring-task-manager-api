@@ -7,6 +7,9 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.example.taskmanagerapi.infra.exception.ConflictException;
+import com.example.taskmanagerapi.infra.exception.ForbiddenException;
+import com.example.taskmanagerapi.infra.exception.ResourceNotFoundException;
 import com.example.taskmanagerapi.modules.auth.domain.User;
 import com.example.taskmanagerapi.modules.auth.repositories.UserRepository;
 import com.example.taskmanagerapi.modules.auth.services.EmailService;
@@ -29,9 +32,6 @@ public class WorkspaceMemberService {
     @Value("${app.frontend.url}")
     private String frontendUrl;
 
-    /**
-     * Add the owner as OWNER member when workspace is created
-     */
     @Transactional
     public void addOwner(Workspace workspace, User owner) {
         WorkspaceMember member = new WorkspaceMember();
@@ -41,17 +41,16 @@ public class WorkspaceMemberService {
         memberRepository.save(member);
     }
 
-    /**
-     * Invite a user by email or username to a workspace
-     */
     @Transactional
     public WorkspaceMemberDTO inviteMember(Workspace workspace, String emailOrUsername) {
         User target = userRepository
                 .findByEmailOrUsername(emailOrUsername, emailOrUsername)
-                .orElseThrow(() -> new IllegalArgumentException("USER_NOT_FOUND"));
+                .orElseThrow(() -> new ResourceNotFoundException("USER_NOT_FOUND",
+                        "No user found with that email or username."));
 
         if (memberRepository.existsByWorkspaceAndUser(workspace, target)) {
-            throw new IllegalArgumentException("USER_ALREADY_MEMBER");
+            throw new ConflictException("USER_ALREADY_MEMBER",
+                    "User is already a member of this workspace.");
         }
 
         WorkspaceMember member = new WorkspaceMember();
@@ -60,7 +59,6 @@ public class WorkspaceMemberService {
         member.setRole(MemberRole.MEMBER);
         WorkspaceMemberDTO saved = new WorkspaceMemberDTO(memberRepository.save(member));
 
-        // Notify invited user by HTML email
         try {
             emailService.sendHtmlEmail(
                 target.getEmail(),
@@ -75,38 +73,33 @@ public class WorkspaceMemberService {
                 )
             );
         } catch (Exception ignored) {
-            // Email failure should not block the invite
         }
 
         return saved;
     }
 
-    /**
-     * Remove a member from a workspace
-     */
     @Transactional
     public void removeMember(Workspace workspace, String userId, User requester) {
         WorkspaceMember target = memberRepository
                 .findByWorkspaceAndUser(workspace, buildUserRef(userId))
-                .orElseThrow(() -> new IllegalArgumentException("MEMBER_NOT_FOUND"));
+                .orElseThrow(() -> new ResourceNotFoundException("MEMBER_NOT_FOUND",
+                        "Member not found in this workspace."));
 
         if (target.getRole() == MemberRole.OWNER) {
-            throw new IllegalArgumentException("CANNOT_REMOVE_OWNER");
+            throw new ConflictException("CANNOT_REMOVE_OWNER",
+                    "The workspace owner cannot be removed.");
         }
 
-        // Only the workspace owner or the member themselves can remove
         boolean isOwner = workspace.getOwner().getId().equals(requester.getId());
         boolean isSelf = userId.equals(requester.getId());
         if (!isOwner && !isSelf) {
-            throw new SecurityException("FORBIDDEN");
+            throw new ForbiddenException("FORBIDDEN",
+                    "You don't have permission to remove this member.");
         }
 
         memberRepository.delete(target);
     }
 
-    /**
-     * List all members of a workspace
-     */
     public List<WorkspaceMemberDTO> listMembers(Workspace workspace) {
         return memberRepository.findByWorkspace(workspace)
                 .stream()
@@ -114,9 +107,6 @@ public class WorkspaceMemberService {
                 .toList();
     }
 
-    /**
-     * Check if a user is a member (or owner) of the workspace
-     */
     public boolean isMember(Workspace workspace, User user) {
         return memberRepository.existsByWorkspaceAndUser(workspace, user);
     }

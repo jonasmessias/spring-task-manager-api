@@ -1,7 +1,6 @@
 package com.example.taskmanagerapi.modules.workspaces.controllers;
 
 import java.util.List;
-import java.util.Optional;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -27,7 +26,6 @@ import com.example.taskmanagerapi.modules.workspaces.dto.CreateWorkspaceDTO;
 import com.example.taskmanagerapi.modules.workspaces.dto.UpdateWorkspaceDTO;
 import com.example.taskmanagerapi.modules.workspaces.dto.WorkspaceDetailDTO;
 import com.example.taskmanagerapi.modules.workspaces.dto.WorkspaceResponseDTO;
-import com.example.taskmanagerapi.modules.workspaces.services.WorkspaceMemberService;
 import com.example.taskmanagerapi.modules.workspaces.services.WorkspaceService;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -49,7 +47,6 @@ import lombok.RequiredArgsConstructor;
 public class WorkspaceController {
     
     private final WorkspaceService workspaceService;
-    private final WorkspaceMemberService memberService;
     private final StorageService storageService;
 
     private static final String WORKSPACE_COVER_FOLDER = "covers/workspaces";
@@ -58,23 +55,16 @@ public class WorkspaceController {
     @ApiResponses(value = {
         @ApiResponse(responseCode = "201", description = "Workspace created successfully",
                 content = @Content(schema = @Schema(implementation = WorkspaceResponseDTO.class))),
-        @ApiResponse(responseCode = "400", description = "Workspace name already exists — `WORKSPACE_NAME_EXISTS`",
+        @ApiResponse(responseCode = "409", description = "Workspace name already exists — `WORKSPACE_NAME_EXISTS`",
                 content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class))),
         @ApiResponse(responseCode = "401", description = "Unauthorized - Invalid or missing token")
     })
     @PostMapping
-    public ResponseEntity<Object> createWorkspace(
+    public ResponseEntity<WorkspaceResponseDTO> createWorkspace(
             @Valid @RequestBody CreateWorkspaceDTO body,
             @AuthenticationPrincipal User user) {
-        
-        try {
-            WorkspaceResponseDTO response = workspaceService.createWorkspace(body, user);
-            return ResponseEntity.status(HttpStatus.CREATED).body(response);
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(new ErrorResponseDTO(
-                "WORKSPACE_NAME_EXISTS", e.getMessage(), 400
-            ));
-        }
+        WorkspaceResponseDTO response = workspaceService.createWorkspace(body, user);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     @Operation(summary = "Get All Workspaces", description = "Retrieve all workspaces the authenticated user owns or was invited to")
@@ -84,8 +74,7 @@ public class WorkspaceController {
     })
     @GetMapping
     public ResponseEntity<List<WorkspaceResponseDTO>> getAllWorkspaces(@AuthenticationPrincipal User user) {
-        List<WorkspaceResponseDTO> response = workspaceService.getWorkspacesByUser(user);
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(workspaceService.getWorkspacesByUser(user));
     }
 
     @Operation(summary = "Get Workspace by ID", description = "Retrieve a specific workspace with all its boards")
@@ -99,26 +88,11 @@ public class WorkspaceController {
         @ApiResponse(responseCode = "401", description = "Unauthorized - Invalid or missing token")
     })
     @GetMapping("/{id}")
-    public ResponseEntity<Object> getWorkspaceById(
+    public ResponseEntity<WorkspaceDetailDTO> getWorkspaceById(
             @Parameter(description = "Workspace ID", required = true) @PathVariable String id,
             @AuthenticationPrincipal User user) {
-        
-        Optional<Workspace> workspaceOpt = workspaceService.getWorkspaceById(id);
-        
-        if (workspaceOpt.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ErrorResponseDTO(
-                "WORKSPACE_NOT_FOUND", "Workspace not found.", 404
-            ));
-        }
-        
-        Workspace workspace = workspaceOpt.get();
-        
-        if (!memberService.isMember(workspace, user)) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(new ErrorResponseDTO(
-                "FORBIDDEN", "You don't have permission to access this workspace.", 403
-            ));
-        }
-        
+        Workspace workspace = workspaceService.getWorkspaceById(id);
+        workspaceService.requireMember(workspace, user);
         return ResponseEntity.ok(new WorkspaceDetailDTO(workspace));
     }
 
@@ -128,42 +102,20 @@ public class WorkspaceController {
                 content = @Content(schema = @Schema(implementation = WorkspaceResponseDTO.class))),
         @ApiResponse(responseCode = "404", description = "Workspace not found — `WORKSPACE_NOT_FOUND`",
                 content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class))),
-        @ApiResponse(responseCode = "400", description = "Workspace name already exists — `WORKSPACE_NAME_EXISTS`",
+        @ApiResponse(responseCode = "409", description = "Workspace name already exists — `WORKSPACE_NAME_EXISTS`",
                 content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class))),
         @ApiResponse(responseCode = "403", description = "Not the workspace owner — `FORBIDDEN`",
                 content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class))),
         @ApiResponse(responseCode = "401", description = "Unauthorized - Invalid or missing token")
     })
     @PutMapping("/{id}")
-    public ResponseEntity<Object> updateWorkspace(
+    public ResponseEntity<WorkspaceResponseDTO> updateWorkspace(
             @Parameter(description = "Workspace ID", required = true) @PathVariable String id,
             @Valid @RequestBody UpdateWorkspaceDTO body,
             @AuthenticationPrincipal User user) {
-        
-        Optional<Workspace> workspaceOpt = workspaceService.getWorkspaceById(id);
-        
-        if (workspaceOpt.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ErrorResponseDTO(
-                "WORKSPACE_NOT_FOUND", "Workspace not found.", 404
-            ));
-        }
-        
-        Workspace workspace = workspaceOpt.get();
-        
-        if (!workspaceService.isWorkspaceOwner(workspace, user)) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(new ErrorResponseDTO(
-                "FORBIDDEN", "Only the workspace owner can update it.", 403
-            ));
-        }
-        
-        try {
-            WorkspaceResponseDTO response = workspaceService.updateWorkspace(workspace, body);
-            return ResponseEntity.ok(response);
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(new ErrorResponseDTO(
-                "WORKSPACE_NAME_EXISTS", e.getMessage(), 400
-            ));
-        }
+        Workspace workspace = workspaceService.getWorkspaceById(id);
+        workspaceService.requireOwner(workspace, user);
+        return ResponseEntity.ok(workspaceService.updateWorkspace(workspace, body));
     }
 
     @Operation(summary = "Delete Workspace", description = "Delete a workspace and all its boards, lists, and cards. Only the owner can delete.")
@@ -176,31 +128,14 @@ public class WorkspaceController {
         @ApiResponse(responseCode = "401", description = "Unauthorized - Invalid or missing token")
     })
     @DeleteMapping("/{id}")
-    public ResponseEntity<Object> deleteWorkspace(
+    public ResponseEntity<Void> deleteWorkspace(
             @Parameter(description = "Workspace ID", required = true) @PathVariable String id,
             @AuthenticationPrincipal User user) {
-        
-        Optional<Workspace> workspaceOpt = workspaceService.getWorkspaceById(id);
-        
-        if (workspaceOpt.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ErrorResponseDTO(
-                "WORKSPACE_NOT_FOUND", "Workspace not found.", 404
-            ));
-        }
-        
-        Workspace workspace = workspaceOpt.get();
-        
-        if (!workspaceService.isWorkspaceOwner(workspace, user)) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(new ErrorResponseDTO(
-                "FORBIDDEN", "Only the workspace owner can delete it.", 403
-            ));
-        }
-
+        Workspace workspace = workspaceService.getWorkspaceById(id);
+        workspaceService.requireOwner(workspace, user);
         workspaceService.deleteWorkspace(id);
         return ResponseEntity.noContent().build();
     }
-
-    // ── Cover endpoints ─────────────────────────────────────────────────
 
     @Operation(summary = "Upload Workspace Cover", description = "Upload or replace the workspace cover image. Only the owner can upload. Accepts JPG, PNG and WebP up to 5MB.")
     @ApiResponses(value = {
@@ -212,26 +147,13 @@ public class WorkspaceController {
         @ApiResponse(responseCode = "401", description = "Unauthorized")
     })
     @PutMapping(value = "/{id}/cover", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<Object> uploadWorkspaceCover(
+    public ResponseEntity<UploadResponseDTO> uploadWorkspaceCover(
             @Parameter(description = "Workspace ID", required = true) @PathVariable String id,
             @RequestParam("file") MultipartFile file,
             @AuthenticationPrincipal User user) {
+        Workspace workspace = workspaceService.getWorkspaceById(id);
+        workspaceService.requireOwner(workspace, user);
 
-        Optional<Workspace> workspaceOpt = workspaceService.getWorkspaceById(id);
-        if (workspaceOpt.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ErrorResponseDTO(
-                "WORKSPACE_NOT_FOUND", "Workspace not found.", 404
-            ));
-        }
-
-        Workspace workspace = workspaceOpt.get();
-        if (!workspaceService.isWorkspaceOwner(workspace, user)) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(new ErrorResponseDTO(
-                "FORBIDDEN", "Only the workspace owner can update the cover.", 403
-            ));
-        }
-
-        // Delete old cover if exists
         if (workspace.getCoverUrl() != null) {
             storageService.deleteFile(workspace.getCoverUrl());
         }
@@ -251,23 +173,11 @@ public class WorkspaceController {
         @ApiResponse(responseCode = "401", description = "Unauthorized")
     })
     @DeleteMapping("/{id}/cover")
-    public ResponseEntity<Object> deleteWorkspaceCover(
+    public ResponseEntity<Void> deleteWorkspaceCover(
             @Parameter(description = "Workspace ID", required = true) @PathVariable String id,
             @AuthenticationPrincipal User user) {
-
-        Optional<Workspace> workspaceOpt = workspaceService.getWorkspaceById(id);
-        if (workspaceOpt.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ErrorResponseDTO(
-                "WORKSPACE_NOT_FOUND", "Workspace not found.", 404
-            ));
-        }
-
-        Workspace workspace = workspaceOpt.get();
-        if (!workspaceService.isWorkspaceOwner(workspace, user)) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(new ErrorResponseDTO(
-                "FORBIDDEN", "Only the workspace owner can remove the cover.", 403
-            ));
-        }
+        Workspace workspace = workspaceService.getWorkspaceById(id);
+        workspaceService.requireOwner(workspace, user);
 
         if (workspace.getCoverUrl() != null) {
             storageService.deleteFile(workspace.getCoverUrl());
