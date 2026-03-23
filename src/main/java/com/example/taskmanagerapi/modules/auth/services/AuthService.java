@@ -2,7 +2,6 @@ package com.example.taskmanagerapi.modules.auth.services;
 
 import java.time.LocalDateTime;
 import java.util.Map;
-import java.util.Optional;
 import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Value;
@@ -10,13 +9,16 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.example.taskmanagerapi.infra.exception.BusinessException;
+import com.example.taskmanagerapi.infra.exception.ForbiddenException;
+import com.example.taskmanagerapi.infra.exception.ResourceNotFoundException;
+import com.example.taskmanagerapi.infra.exception.UnauthorizedException;
 import com.example.taskmanagerapi.infra.security.TokenService;
 import com.example.taskmanagerapi.modules.auth.domain.EmailVerificationToken;
 import com.example.taskmanagerapi.modules.auth.domain.PasswordResetToken;
 import com.example.taskmanagerapi.modules.auth.domain.RefreshToken;
 import com.example.taskmanagerapi.modules.auth.domain.User;
 import com.example.taskmanagerapi.modules.auth.dto.AuthResponseDTO;
-import com.example.taskmanagerapi.modules.auth.dto.ErrorResponseDTO;
 import com.example.taskmanagerapi.modules.auth.dto.LoginRequestDTO;
 import com.example.taskmanagerapi.modules.auth.dto.MessageResponseDTO;
 import com.example.taskmanagerapi.modules.auth.dto.RegisterRequestDTO;
@@ -27,10 +29,6 @@ import com.example.taskmanagerapi.modules.auth.repositories.UserRepository;
 
 import lombok.RequiredArgsConstructor;
 
-/**
- * AuthService — contains all authentication business logic,
- * extracted from AuthController to follow Single Responsibility Principle.
- */
 @Service
 @RequiredArgsConstructor
 public class AuthService {
@@ -48,95 +46,56 @@ public class AuthService {
     @Value("${app.frontend.url}")
     private String frontendUrl;
 
-    // =========================================================================
-    // Login
-    // =========================================================================
-
-    /**
-     * Authenticate a user by email/username + password.
-     * Returns either an AuthResponseDTO or ErrorResponseDTO.
-     */
-    public record LoginResult(Object body, int status) {}
-
-    public LoginResult login(LoginRequestDTO dto, String ipAddress, String userAgent) {
+    public AuthResponseDTO login(LoginRequestDTO dto, String ipAddress, String userAgent) {
         User user = userRepository.findByEmail(dto.emailOrUsername())
                 .or(() -> userRepository.findByUsername(dto.emailOrUsername()))
                 .orElse(null);
 
-        // OAuth-only users have no password
         if (user != null && user.getPassword() == null) {
-            return new LoginResult(new ErrorResponseDTO(
-                "USE_GOOGLE_LOGIN",
-                "This account uses Google Sign-In. Please log in with Google.",
-                401
-            ), 401);
+            throw new UnauthorizedException("USE_GOOGLE_LOGIN",
+                    "This account uses Google Sign-In. Please log in with Google.");
         }
 
         if (user == null || !passwordEncoder.matches(dto.password(), user.getPassword())) {
-            return new LoginResult(new ErrorResponseDTO(
-                "INVALID_CREDENTIALS", "Invalid credentials.", 401
-            ), 401);
+            throw new UnauthorizedException("INVALID_CREDENTIALS", "Invalid credentials.");
         }
 
         if (!user.isEmailVerified()) {
-            return new LoginResult(new ErrorResponseDTO(
-                "EMAIL_NOT_VERIFIED",
-                "Email not verified. Please check your inbox and verify your account.",
-                403
-            ), 403);
+            throw new ForbiddenException("EMAIL_NOT_VERIFIED",
+                    "Email not verified. Please check your inbox and verify your account.");
         }
 
         String accessToken = tokenService.generateToken(user);
         RefreshToken refreshToken = refreshTokenService.createRefreshToken(user, ipAddress, userAgent);
         auditLogService.logLogin(user, ipAddress, userAgent);
 
-        return new LoginResult(
-            new AuthResponseDTO(user.getName(), accessToken, refreshToken.getToken()), 200
-        );
+        return new AuthResponseDTO(user.getName(), accessToken, refreshToken.getToken());
     }
 
-    // =========================================================================
-    // Google Login
-    // =========================================================================
-
-    public LoginResult googleLogin(String idToken, String ipAddress, String userAgent) {
+    public AuthResponseDTO googleLogin(String idToken, String ipAddress, String userAgent) {
         try {
             User user = googleAuthService.verifyAndGetUser(idToken);
             String accessToken = tokenService.generateToken(user);
             RefreshToken refreshToken = refreshTokenService.createRefreshToken(user, ipAddress, userAgent);
             auditLogService.logLogin(user, ipAddress, userAgent);
-            return new LoginResult(
-                new AuthResponseDTO(user.getName(), accessToken, refreshToken.getToken()), 200
-            );
+            return new AuthResponseDTO(user.getName(), accessToken, refreshToken.getToken());
         } catch (IllegalArgumentException e) {
-            return new LoginResult(new ErrorResponseDTO(
-                "INVALID_GOOGLE_TOKEN", "Invalid or expired Google token.", 401
-            ), 401);
+            throw new UnauthorizedException("INVALID_GOOGLE_TOKEN", "Invalid or expired Google token.");
         }
     }
 
-    // =========================================================================
-    // Register
-    // =========================================================================
-
     @Transactional
-    public LoginResult register(RegisterRequestDTO dto, String ipAddress) {
+    public MessageResponseDTO register(RegisterRequestDTO dto, String ipAddress) {
         if (!dto.password().equals(dto.confirmPassword())) {
-            return new LoginResult(new ErrorResponseDTO(
-                "PASSWORDS_DO_NOT_MATCH", "Passwords do not match.", 400
-            ), 400);
+            throw new BusinessException("PASSWORDS_DO_NOT_MATCH", "Passwords do not match.");
         }
 
         if (userRepository.findByEmail(dto.email()).isPresent()) {
-            return new LoginResult(new ErrorResponseDTO(
-                "EMAIL_ALREADY_EXISTS", "Email already registered.", 400
-            ), 400);
+            throw new BusinessException("EMAIL_ALREADY_EXISTS", "Email already registered.");
         }
 
         if (userRepository.findByUsername(dto.username()).isPresent()) {
-            return new LoginResult(new ErrorResponseDTO(
-                "USERNAME_ALREADY_EXISTS", "Username already taken.", 400
-            ), 400);
+            throw new BusinessException("USERNAME_ALREADY_EXISTS", "Username already taken.");
         }
 
         User newUser = new User();
@@ -150,37 +109,22 @@ public class AuthService {
         sendVerificationEmail(newUser);
         auditLogService.logRegistration(newUser, ipAddress);
 
-        return new LoginResult(new MessageResponseDTO(
+        return new MessageResponseDTO(
             "Registration successful! Please check your email to verify your account."
-        ), 201);
+        );
     }
 
-    // =========================================================================
-    // Refresh Token
-    // =========================================================================
+    public AuthResponseDTO refreshToken(String refreshTokenStr, String ipAddress) {
+        RefreshToken refreshToken = refreshTokenService.validateRefreshToken(refreshTokenStr)
+                .orElseThrow(() -> new UnauthorizedException("INVALID_TOKEN",
+                        "Invalid or expired refresh token."));
 
-    public LoginResult refreshToken(String refreshTokenStr, String ipAddress) {
-        Optional<RefreshToken> refreshTokenOpt = refreshTokenService.validateRefreshToken(refreshTokenStr);
-
-        if (refreshTokenOpt.isEmpty()) {
-            return new LoginResult(new ErrorResponseDTO(
-                "INVALID_TOKEN", "Invalid or expired refresh token.", 401
-            ), 401);
-        }
-
-        RefreshToken refreshToken = refreshTokenOpt.get();
         User user = refreshToken.getUser();
         String newAccessToken = tokenService.generateToken(user);
         auditLogService.logTokenRefresh(user, ipAddress);
 
-        return new LoginResult(
-            new AuthResponseDTO(user.getName(), newAccessToken, refreshToken.getToken()), 200
-        );
+        return new AuthResponseDTO(user.getName(), newAccessToken, refreshToken.getToken());
     }
-
-    // =========================================================================
-    // Logout
-    // =========================================================================
 
     public void logout(User user, String refreshTokenStr, String ipAddress) {
         refreshTokenService.deleteRefreshToken(refreshTokenStr);
@@ -192,43 +136,25 @@ public class AuthService {
         auditLogService.logLogoutAll(user, ipAddress);
     }
 
-    // =========================================================================
-    // Email Verification
-    // =========================================================================
-
     @Transactional
-    public LoginResult verifyEmail(String token, String ipAddress) {
-        Optional<EmailVerificationToken> tokenOpt = emailVerificationRepository.findByToken(token);
-
-        if (tokenOpt.isEmpty()) {
-            return new LoginResult(new ErrorResponseDTO(
-                "INVALID_TOKEN", "Invalid verification token.", 400
-            ), 400);
-        }
-
-        EmailVerificationToken verificationToken = tokenOpt.get();
+    public MessageResponseDTO verifyEmail(String token, String ipAddress) {
+        EmailVerificationToken verificationToken = emailVerificationRepository.findByToken(token)
+                .orElseThrow(() -> new BusinessException("INVALID_TOKEN", "Invalid verification token."));
 
         if (verificationToken.getExpirationDate().isBefore(LocalDateTime.now())) {
             emailVerificationRepository.delete(verificationToken);
-            return new LoginResult(new ErrorResponseDTO(
-                "EXPIRED_TOKEN", "Verification token has expired. Please request a new one.", 400
-            ), 400);
+            throw new BusinessException("EXPIRED_TOKEN",
+                    "Verification token has expired. Please request a new one.");
         }
 
-        Optional<User> userOpt = userRepository.findByEmail(verificationToken.getEmail());
-        if (userOpt.isEmpty()) {
-            return new LoginResult(new ErrorResponseDTO(
-                "INVALID_TOKEN", "User not found for this token.", 400
-            ), 400);
-        }
-
-        User user = userOpt.get();
+        User user = userRepository.findByEmail(verificationToken.getEmail())
+                .orElseThrow(() -> new BusinessException("INVALID_TOKEN",
+                        "User not found for this token."));
 
         if (user.isEmailVerified()) {
             emailVerificationRepository.delete(verificationToken);
-            return new LoginResult(new ErrorResponseDTO(
-                "EMAIL_ALREADY_VERIFIED", "This email is already verified. You can log in.", 400
-            ), 400);
+            throw new BusinessException("EMAIL_ALREADY_VERIFIED",
+                    "This email is already verified. You can log in.");
         }
 
         user.setEmailVerified(true);
@@ -236,51 +162,29 @@ public class AuthService {
         emailVerificationRepository.delete(verificationToken);
         auditLogService.logEmailVerification(user, ipAddress);
 
-        return new LoginResult(new MessageResponseDTO(
-            "Email verified successfully! You can now log in."
-        ), 200);
+        return new MessageResponseDTO("Email verified successfully! You can now log in.");
     }
 
     @Transactional
-    public LoginResult resendVerification(String email) {
-        Optional<User> userOpt = userRepository.findByEmail(email);
-
-        if (userOpt.isEmpty()) {
-            return new LoginResult(new ErrorResponseDTO(
-                "EMAIL_NOT_FOUND", "E-mail not found.", 404
-            ), 404);
-        }
-
-        User user = userOpt.get();
+    public MessageResponseDTO resendVerification(String email) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException("EMAIL_NOT_FOUND", "E-mail not found."));
 
         if (user.isEmailVerified()) {
-            return new LoginResult(new ErrorResponseDTO(
-                "EMAIL_ALREADY_VERIFIED", "This email is already verified. You can log in.", 400
-            ), 400);
+            throw new BusinessException("EMAIL_ALREADY_VERIFIED",
+                    "This email is already verified. You can log in.");
         }
 
         sendVerificationEmail(user);
 
-        return new LoginResult(new MessageResponseDTO(
-            "Verification email resent successfully."
-        ), 200);
+        return new MessageResponseDTO("Verification email resent successfully.");
     }
 
-    // =========================================================================
-    // Password Reset
-    // =========================================================================
-
     @Transactional
-    public LoginResult forgotPassword(String email) {
-        Optional<User> userOpt = userRepository.findByEmail(email);
+    public MessageResponseDTO forgotPassword(String email) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException("EMAIL_NOT_FOUND", "E-mail not found."));
 
-        if (userOpt.isEmpty()) {
-            return new LoginResult(new ErrorResponseDTO(
-                "EMAIL_NOT_FOUND", "E-mail not found.", 404
-            ), 404);
-        }
-
-        User user = userOpt.get();
         String token = UUID.randomUUID().toString();
         passwordResetRepository.deleteByEmail(email);
 
@@ -297,58 +201,40 @@ public class AuthService {
             "resetLink", resetLink
         ));
 
-        return new LoginResult(new MessageResponseDTO(
-            "Password reset email sent. Please check your inbox."
-        ), 200);
+        return new MessageResponseDTO("Password reset email sent. Please check your inbox.");
     }
 
     @Transactional
-    public LoginResult resetPassword(ResetPasswordDTO dto, String ipAddress) {
+    public MessageResponseDTO resetPassword(ResetPasswordDTO dto, String ipAddress) {
         if (!dto.newPassword().equals(dto.confirmNewPassword())) {
-            return new LoginResult(new ErrorResponseDTO(
-                "PASSWORDS_DO_NOT_MATCH", "Passwords do not match.", 400
-            ), 400);
+            throw new BusinessException("PASSWORDS_DO_NOT_MATCH", "Passwords do not match.");
         }
 
-        Optional<PasswordResetToken> tokenOpt = passwordResetRepository.findByToken(dto.token());
-        if (tokenOpt.isEmpty()) {
-            return new LoginResult(new ErrorResponseDTO(
-                "INVALID_TOKEN", "Invalid password reset token.", 401
-            ), 401);
-        }
+        PasswordResetToken resetToken = passwordResetRepository.findByToken(dto.token())
+                .orElseThrow(() -> new UnauthorizedException("INVALID_TOKEN",
+                        "Invalid password reset token."));
 
-        PasswordResetToken resetToken = tokenOpt.get();
         if (resetToken.getExpirationDate().isBefore(LocalDateTime.now())) {
             passwordResetRepository.delete(resetToken);
-            return new LoginResult(new ErrorResponseDTO(
-                "EXPIRED_TOKEN", "Password reset token has expired. Please request a new one.", 401
-            ), 401);
+            throw new UnauthorizedException("EXPIRED_TOKEN",
+                    "Password reset token has expired. Please request a new one.");
         }
 
-        Optional<User> userOpt = userRepository.findByEmail(resetToken.getEmail());
-        if (userOpt.isEmpty()) {
-            return new LoginResult(new ErrorResponseDTO(
-                "INVALID_TOKEN", "Invalid password reset token.", 401
-            ), 401);
-        }
+        User user = userRepository.findByEmail(resetToken.getEmail())
+                .orElseThrow(() -> new UnauthorizedException("INVALID_TOKEN",
+                        "Invalid password reset token."));
 
-        User user = userOpt.get();
         user.setPassword(passwordEncoder.encode(dto.newPassword()));
         userRepository.save(user);
 
-        // CRITICAL SECURITY: Invalidate all refresh tokens on password reset
         refreshTokenService.deleteAllUserTokens(user);
         auditLogService.logPasswordReset(user, ipAddress);
         passwordResetRepository.delete(resetToken);
 
-        return new LoginResult(new MessageResponseDTO(
+        return new MessageResponseDTO(
             "Password reset successfully. All sessions have been logged out for security."
-        ), 200);
+        );
     }
-
-    // =========================================================================
-    // Private helpers
-    // =========================================================================
 
     private void sendVerificationEmail(User user) {
         emailVerificationRepository.deleteByEmail(user.getEmail());
