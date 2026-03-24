@@ -2,18 +2,54 @@
 
 ## Arquitetura
 
+### Desenvolvimento (Local)
+
 ```
 ┌──────────────┐       ┌──────────────┐       ┌──────────────┐
 │   Frontend   │◄─────►│  Spring Boot │◄─────►│  PostgreSQL  │
-│   (Client)   │  REST │     API      │  JPA  │   Database   │
+│   (Client)   │  REST │     API      │  JPA  │  (Docker)    │
 └──────────────┘       └──────┬───────┘       └──────────────┘
                               │
                     ┌─────────┼─────────┬──────────┐
                     │         │         │          │
                ┌────▼───┐ ┌──▼───┐ ┌───▼────┐ ┌───▼───┐
                │ Redis  │ │ AWS  │ │ Google │ │ AWS   │
-               │ Cache  │ │ SES  │ │ OAuth  │ │  S3   │
+               │(Docker)│ │ SES  │ │ OAuth  │ │  S3   │
                └────────┘ └──────┘ └────────┘ └───────┘
+```
+
+### Produção (AWS)
+
+```
+                    ┌─── Internet ───┐
+                    │                │
+                    ▼                ▼
+            ┌──────────────┐  ┌──────────────┐
+            │   Frontend   │  │  DNS (A)     │
+            │   (Vercel)   │  │  api.domain  │
+            └──────────────┘  └──────┬───────┘
+                                     │
+                    ┌────── EC2 ──────┴──────────────┐
+                    │                                 │
+                    │  Nginx (reverse proxy + SSL)    │
+                    │  :443 → :8080                   │
+                    │                                 │
+                    │  ┌───────────────────────────┐  │
+                    │  │  Spring Boot (container)  │  │
+                    │  │  porta 8080               │  │
+                    │  └──────────┬────────────────┘  │
+                    │             │ rede Docker        │
+                    │  ┌──────────┴────────────────┐  │
+                    │  │  Redis 7 (container)       │  │
+                    │  │  ~10MB RAM                 │  │
+                    │  └───────────────────────────┘  │
+                    │                                 │
+                    └────────────────┬────────────────┘
+                                    │ rede VPC
+                             ┌──────┴──────┐
+                             │  AWS RDS     │
+                             │  PostgreSQL  │
+                             └─────────────┘
 ```
 
 ### Estrutura dos Módulos
@@ -38,21 +74,95 @@ src/main/java/com/example/taskmanagerapi/
 
 ## Stack Tecnológica
 
-| Tecnologia        | Finalidade                                  |
-| ----------------- | ------------------------------------------- |
-| Java 17           | Linguagem                                   |
-| Spring Boot 3.5   | Framework                                   |
-| Spring Security   | Autenticação e autorização                  |
-| JWT (java-jwt)    | Token de acesso (expiração de 4h)           |
-| Redis 7           | Cache de refresh tokens (7 dias)            |
-| PostgreSQL 16     | Banco de dados principal                    |
-| AWS SES           | E-mails transacionais (HTML)                |
-| AWS S3            | Armazenamento de arquivos (avatares, capas) |
-| Thymeleaf         | Templates de e-mail HTML                    |
-| Google OAuth 2.0  | Login social                                |
-| Springdoc OpenAPI | Documentação Swagger UI                     |
-| Docker Compose    | Containerização da infraestrutura           |
-| Lombok            | Redução de boilerplate                      |
+| Tecnologia          | Finalidade                                  |
+| ------------------- | ------------------------------------------- |
+| Java 17             | Linguagem                                   |
+| Spring Boot 3.5     | Framework                                   |
+| Spring Security     | Autenticação e autorização                  |
+| JWT (java-jwt)      | Token de acesso (expiração de 4h)           |
+| Redis 7             | Cache de refresh tokens (7 dias)            |
+| PostgreSQL 16       | Banco de dados principal                    |
+| Flyway              | Migrações de banco de dados                 |
+| Bucket4j            | Rate limiting por IP (100 req/min)          |
+| Spring Actuator     | Health check e métricas                     |
+| AWS SES             | E-mails transacionais (HTML)                |
+| AWS S3              | Armazenamento de arquivos (avatares, capas) |
+| Thymeleaf           | Templates de e-mail HTML                    |
+| Google OAuth 2.0    | Login social                                |
+| Springdoc OpenAPI   | Documentação Swagger UI                     |
+| Docker Compose      | Containerização da infraestrutura           |
+| GitHub Actions      | CI/CD — deploy automático                   |
+| Nginx + Certbot     | Reverse proxy + HTTPS (Let's Encrypt)       |
+| Lombok              | Redução de boilerplate                      |
+
+---
+
+## Deploy em Produção
+
+### Infraestrutura
+
+| Serviço    | Tecnologia               | Descrição                       |
+| ---------- | ------------------------ | ------------------------------- |
+| Servidor   | AWS EC2 (t2.micro)       | Hospeda API + Redis via Docker  |
+| Banco      | AWS RDS PostgreSQL 16    | Banco de dados gerenciado       |
+| Cache      | Redis 7 (Docker local)   | Refresh tokens (dentro da EC2)  |
+| Email      | AWS SES (sa-east-1)      | E-mails transacionais           |
+| Storage    | AWS S3 (sa-east-1)       | Armazenamento de arquivos       |
+| SSL        | Nginx + Certbot          | HTTPS com Let's Encrypt         |
+| CI/CD      | GitHub Actions           | Deploy automático a cada push   |
+
+### Spring Profiles
+
+| Profile   | Arquivo                         | Uso                                |
+| --------- | ------------------------------- | ---------------------------------- |
+| (default) | `application.properties`        | Desenvolvimento local              |
+| `prod`    | `application-prod.properties`   | Produção (credenciais via env vars)|
+
+Em produção, o profile é ativado via `SPRING_PROFILES_ACTIVE=prod` no Docker Compose.
+
+### CI/CD (GitHub Actions)
+
+A cada push na branch `master`, o workflow `.github/workflows/deploy.yml` executa:
+
+1. Conecta via SSH na EC2
+2. `git pull origin master`
+3. `docker compose -f docker-compose.prod.yml up -d --build`
+4. `docker image prune -f` (limpa imagens antigas)
+
+Secrets necessários no GitHub (Settings → Secrets → Actions):
+
+| Secret         | Descrição                      |
+| -------------- | ------------------------------ |
+| `EC2_HOST`     | IP público da instância EC2    |
+| `EC2_USERNAME` | Usuário SSH (ex: `ec2-user`)   |
+| `EC2_SSH_KEY`  | Conteúdo do arquivo `.pem`     |
+
+### Variáveis de Ambiente (Produção)
+
+Configuradas em um arquivo `.env` na EC2 (não versionado):
+
+| Variável            | Descrição                           |
+| ------------------- | ----------------------------------- |
+| `DATABASE_URL`      | JDBC URL do RDS PostgreSQL          |
+| `DATABASE_USERNAME` | Usuário do banco                    |
+| `DATABASE_PASSWORD` | Senha do banco                      |
+| `JWT_SECRET`        | Chave para assinar JWTs (base64)    |
+| `AWS_ACCESS_KEY`    | Chave de acesso AWS                 |
+| `AWS_SECRET_KEY`    | Chave secreta AWS                   |
+| `AWS_REGION`        | Região AWS (sa-east-1)              |
+| `S3_BUCKET_NAME`    | Nome do bucket S3                   |
+| `AWS_SES_FROM`      | E-mail remetente verificado no SES  |
+| `GOOGLE_CLIENT_ID`  | Client ID do Google OAuth 2.0       |
+| `FRONTEND_URL`      | URL do frontend (CORS)              |
+
+### Segurança em Produção
+
+- `application.properties` e `.env` estão no `.gitignore` — nunca vão para o git
+- RDS acessível apenas dentro da VPC (Security Group restrito)
+- Redis roda localmente no Docker — sem exposição externa
+- Swagger UI desabilitado em produção
+- HTTPS obrigatório via Nginx + Certbot
+- Rate limiting: 100 requisições/minuto por IP
 
 ---
 
@@ -92,10 +202,12 @@ src/main/java/com/example/taskmanagerapi/
 ### Segurança
 
 - `SecurityFilter` intercepta todas as requisições, valida o JWT e configura o `SecurityContext`
-- Endpoints públicos: `/auth/login`, `/auth/register`, `/auth/google`, `/auth/refresh`, `/auth/verify-email`, `/auth/resend-verification`, `/auth/forgot-password`, `/auth/reset-password`
+- `RateLimitFilter` limita a 100 requisições/minuto por IP usando Bucket4j
+- Endpoints públicos: `/auth/login`, `/auth/register`, `/auth/google`, `/auth/refresh`, `/auth/verify-email`, `/auth/resend-verification`, `/auth/forgot-password`, `/auth/reset-password`, `/actuator/health`
 - Todos os outros endpoints requerem `Authorization: Bearer <token>`
 - CORS restrito às URLs de frontend configuradas com `allowCredentials(true)`
 - Redefinição de senha invalida **todos** os refresh tokens do usuário
+- Validação com `@Valid` em todos os endpoints que recebem request body
 
 ---
 
@@ -671,4 +783,4 @@ Todos os erros seguem o formato:
 
 ---
 
-_Última atualização: 19 de março de 2026_
+_Última atualização: 24 de março de 2026_

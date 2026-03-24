@@ -71,6 +71,67 @@ docker compose up -d --build
 
 A API estará disponível em `http://localhost:8080`.
 
+## Deploy em Produção
+
+### Infraestrutura
+
+A aplicação roda em produção na **AWS** com a seguinte arquitetura:
+
+```
+┌─── EC2 (Docker Compose) ────────┐
+│                                  │
+│  ┌────────────────────────────┐  │
+│  │  Redis 7 (container)       │  │
+│  └──────────┬─────────────────┘  │
+│             │ rede interna        │
+│  ┌──────────┴─────────────────┐  │
+│  │  Spring Boot (container)   │  │
+│  │  porta 8080                │  │
+│  └────────────────────────────┘  │
+│                                  │
+│  Nginx (reverse proxy + SSL)     │
+│  porta 80/443 → 8080            │
+│                                  │
+└──────────────┬───────────────────┘
+               │ rede VPC
+        ┌──────┴──────┐
+        │  AWS RDS     │
+        │  PostgreSQL  │
+        └─────────────┘
+```
+
+| Serviço    | Tecnologia               | Descrição                       |
+| ---------- | ------------------------ | ------------------------------- |
+| Servidor   | AWS EC2                  | Hospeda API + Redis via Docker  |
+| Banco      | AWS RDS PostgreSQL 16    | Banco de dados gerenciado       |
+| Cache      | Redis 7 (Docker local)   | Refresh tokens (dentro da EC2)  |
+| Email      | AWS SES                  | E-mails transacionais           |
+| Storage    | AWS S3                   | Armazenamento de arquivos       |
+| SSL        | Nginx + Certbot          | HTTPS com Let's Encrypt         |
+| CI/CD      | GitHub Actions           | Deploy automático a cada push   |
+
+### CI/CD (Deploy Automático)
+
+A cada push na branch `master`, o **GitHub Actions** conecta via SSH na EC2 e executa:
+
+```
+git pull → docker compose build → deploy
+```
+
+O workflow está em `.github/workflows/deploy.yml` e requer os seguintes **Secrets** no repositório:
+
+| Secret         | Descrição                      |
+| -------------- | ------------------------------ |
+| `EC2_HOST`     | IP público da instância EC2    |
+| `EC2_USERNAME` | Usuário SSH (ex: `ec2-user`)   |
+| `EC2_SSH_KEY`  | Conteúdo do arquivo `.pem`     |
+
+### Configuração de Produção
+
+A aplicação usa **Spring Profiles**. Em produção, o profile `prod` é ativado via variável de ambiente `SPRING_PROFILES_ACTIVE=prod`, que carrega o arquivo `application-prod.properties`.
+
+Todas as credenciais são injetadas via variáveis de ambiente definidas em um arquivo `.env` na EC2 (não versionado no git).
+
 ## Documentação da API
 
 Com o servidor em execução, abra o navegador e acesse:
@@ -81,6 +142,8 @@ http://localhost:8080/swagger-ui.html
 
 A interface interativa do Swagger UI permite explorar e testar todos os endpoints disponíveis.
 
+> **Nota:** O Swagger UI é desabilitado em produção por segurança.
+
 ## Estrutura do Projeto
 
 ```
@@ -88,8 +151,8 @@ src/main/java/com/example/taskmanagerapi/
 ├── config/              # Configuração OpenAPI, Redis, AWS SES, AWS S3
 ├── infra/
 │   ├── cors/            # Política de CORS
-│   ├── exception/       # Tratamento global de exceções
-│   └── security/        # Filtro JWT, serviço de token, configuração de segurança
+│   ├── exception/       # Tratamento global de exceções (custom exceptions)
+│   └── security/        # Filtro JWT, Rate Limiting, serviço de token, configuração
 └── modules/
     ├── auth/            # Autenticação, usuários, verificação de e-mail
     ├── workspaces/      # CRUD de Workspaces + membros + capas
@@ -101,21 +164,26 @@ src/main/java/com/example/taskmanagerapi/
 
 ## Stack Tecnológica
 
-| Tecnologia        | Finalidade                                  |
-| ----------------- | ------------------------------------------- |
-| Java 17           | Linguagem                                   |
-| Spring Boot 3.5   | Framework                                   |
-| Spring Security   | Autenticação e autorização                  |
-| JWT (java-jwt)    | Token de acesso (expiração de 4h)           |
-| PostgreSQL 16     | Banco de dados principal                    |
-| Redis 7           | Cache de refresh tokens (TTL de 7 dias)     |
-| AWS SES           | E-mails transacionais (HTML)                |
-| AWS S3            | Armazenamento de arquivos (avatares, capas) |
-| Google OAuth 2.0  | Login social                                |
-| Thymeleaf         | Templates de e-mail HTML                    |
-| Springdoc OpenAPI | Documentação Swagger UI                     |
-| Docker Compose    | Containerização da infraestrutura           |
-| Lombok            | Redução de boilerplate                      |
+| Tecnologia          | Finalidade                                  |
+| ------------------- | ------------------------------------------- |
+| Java 17             | Linguagem                                   |
+| Spring Boot 3.5     | Framework                                   |
+| Spring Security     | Autenticação e autorização                  |
+| JWT (java-jwt)      | Token de acesso (expiração de 4h)           |
+| PostgreSQL 16       | Banco de dados principal                    |
+| Redis 7             | Cache de refresh tokens (TTL de 7 dias)     |
+| Flyway              | Migrações de banco de dados                 |
+| Bucket4j            | Rate limiting por IP                        |
+| Spring Actuator     | Health check e métricas                     |
+| AWS SES             | E-mails transacionais (HTML)                |
+| AWS S3              | Armazenamento de arquivos (avatares, capas) |
+| Google OAuth 2.0    | Login social                                |
+| Thymeleaf           | Templates de e-mail HTML                    |
+| Springdoc OpenAPI   | Documentação Swagger UI                     |
+| Docker Compose      | Containerização da infraestrutura           |
+| GitHub Actions      | CI/CD — deploy automático                   |
+| Nginx + Certbot     | Reverse proxy + HTTPS (Let's Encrypt)       |
+| Lombok              | Redução de boilerplate                      |
 
 ## Executando Testes
 
