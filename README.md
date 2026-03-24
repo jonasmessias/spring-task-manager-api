@@ -100,15 +100,15 @@ A aplicação roda em produção na **AWS** com a seguinte arquitetura:
         └─────────────┘
 ```
 
-| Serviço    | Tecnologia               | Descrição                       |
-| ---------- | ------------------------ | ------------------------------- |
-| Servidor   | AWS EC2                  | Hospeda API + Redis via Docker  |
-| Banco      | AWS RDS PostgreSQL 16    | Banco de dados gerenciado       |
-| Cache      | Redis 7 (Docker local)   | Refresh tokens (dentro da EC2)  |
-| Email      | AWS SES                  | E-mails transacionais           |
-| Storage    | AWS S3                   | Armazenamento de arquivos       |
-| SSL        | Nginx + Certbot          | HTTPS com Let's Encrypt         |
-| CI/CD      | GitHub Actions           | Deploy automático a cada push   |
+| Serviço  | Tecnologia             | Descrição                      |
+| -------- | ---------------------- | ------------------------------ |
+| Servidor | AWS EC2                | Hospeda API + Redis via Docker |
+| Banco    | AWS RDS PostgreSQL 16  | Banco de dados gerenciado      |
+| Cache    | Redis 7 (Docker local) | Refresh tokens (dentro da EC2) |
+| Email    | AWS SES                | E-mails transacionais          |
+| Storage  | AWS S3                 | Armazenamento de arquivos      |
+| SSL      | Nginx + Certbot        | HTTPS com Let's Encrypt        |
+| CI/CD    | GitHub Actions         | Deploy automático a cada push  |
 
 ### CI/CD (Deploy Automático)
 
@@ -120,11 +120,11 @@ git pull → docker compose build → deploy
 
 O workflow está em `.github/workflows/deploy.yml` e requer os seguintes **Secrets** no repositório:
 
-| Secret         | Descrição                      |
-| -------------- | ------------------------------ |
-| `EC2_HOST`     | IP público da instância EC2    |
-| `EC2_USERNAME` | Usuário SSH (ex: `ec2-user`)   |
-| `EC2_SSH_KEY`  | Conteúdo do arquivo `.pem`     |
+| Secret         | Descrição                    |
+| -------------- | ---------------------------- |
+| `EC2_HOST`     | IP público da instância EC2  |
+| `EC2_USERNAME` | Usuário SSH (ex: `ec2-user`) |
+| `EC2_SSH_KEY`  | Conteúdo do arquivo `.pem`   |
 
 ### Configuração de Produção
 
@@ -164,26 +164,26 @@ src/main/java/com/example/taskmanagerapi/
 
 ## Stack Tecnológica
 
-| Tecnologia          | Finalidade                                  |
-| ------------------- | ------------------------------------------- |
-| Java 17             | Linguagem                                   |
-| Spring Boot 3.5     | Framework                                   |
-| Spring Security     | Autenticação e autorização                  |
-| JWT (java-jwt)      | Token de acesso (expiração de 4h)           |
-| PostgreSQL 16       | Banco de dados principal                    |
-| Redis 7             | Cache de refresh tokens (TTL de 7 dias)     |
-| Flyway              | Migrações de banco de dados                 |
-| Bucket4j            | Rate limiting por IP                        |
-| Spring Actuator     | Health check e métricas                     |
-| AWS SES             | E-mails transacionais (HTML)                |
-| AWS S3              | Armazenamento de arquivos (avatares, capas) |
-| Google OAuth 2.0    | Login social                                |
-| Thymeleaf           | Templates de e-mail HTML                    |
-| Springdoc OpenAPI   | Documentação Swagger UI                     |
-| Docker Compose      | Containerização da infraestrutura           |
-| GitHub Actions      | CI/CD — deploy automático                   |
-| Nginx + Certbot     | Reverse proxy + HTTPS (Let's Encrypt)       |
-| Lombok              | Redução de boilerplate                      |
+| Tecnologia        | Finalidade                                  |
+| ----------------- | ------------------------------------------- |
+| Java 17           | Linguagem                                   |
+| Spring Boot 3.5   | Framework                                   |
+| Spring Security   | Autenticação e autorização                  |
+| JWT (java-jwt)    | Token de acesso (expiração de 4h)           |
+| PostgreSQL 16     | Banco de dados principal                    |
+| Redis 7           | Cache de refresh tokens (TTL de 7 dias)     |
+| Flyway            | Migrações de banco de dados                 |
+| Bucket4j          | Rate limiting por IP                        |
+| Spring Actuator   | Health check e métricas                     |
+| AWS SES           | E-mails transacionais (HTML)                |
+| AWS S3            | Armazenamento de arquivos (avatares, capas) |
+| Google OAuth 2.0  | Login social                                |
+| Thymeleaf         | Templates de e-mail HTML                    |
+| Springdoc OpenAPI | Documentação Swagger UI                     |
+| Docker Compose    | Containerização da infraestrutura           |
+| GitHub Actions    | CI/CD — deploy automático                   |
+| Nginx + Certbot   | Reverse proxy + HTTPS (Let's Encrypt)       |
+| Lombok            | Redução de boilerplate                      |
 
 ## Executando Testes
 

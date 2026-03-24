@@ -74,26 +74,26 @@ src/main/java/com/example/taskmanagerapi/
 
 ## Stack Tecnológica
 
-| Tecnologia          | Finalidade                                  |
-| ------------------- | ------------------------------------------- |
-| Java 17             | Linguagem                                   |
-| Spring Boot 3.5     | Framework                                   |
-| Spring Security     | Autenticação e autorização                  |
-| JWT (java-jwt)      | Token de acesso (expiração de 4h)           |
-| Redis 7             | Cache de refresh tokens (7 dias)            |
-| PostgreSQL 16       | Banco de dados principal                    |
-| Flyway              | Migrações de banco de dados                 |
-| Bucket4j            | Rate limiting por IP (100 req/min)          |
-| Spring Actuator     | Health check e métricas                     |
-| AWS SES             | E-mails transacionais (HTML)                |
-| AWS S3              | Armazenamento de arquivos (avatares, capas) |
-| Thymeleaf           | Templates de e-mail HTML                    |
-| Google OAuth 2.0    | Login social                                |
-| Springdoc OpenAPI   | Documentação Swagger UI                     |
-| Docker Compose      | Containerização da infraestrutura           |
-| GitHub Actions      | CI/CD — deploy automático                   |
-| Nginx + Certbot     | Reverse proxy + HTTPS (Let's Encrypt)       |
-| Lombok              | Redução de boilerplate                      |
+| Tecnologia        | Finalidade                                  |
+| ----------------- | ------------------------------------------- |
+| Java 17           | Linguagem                                   |
+| Spring Boot 3.5   | Framework                                   |
+| Spring Security   | Autenticação e autorização                  |
+| JWT (java-jwt)    | Token de acesso (expiração de 4h)           |
+| Redis 7           | Cache de refresh tokens (7 dias)            |
+| PostgreSQL 16     | Banco de dados principal                    |
+| Flyway            | Migrações de banco de dados                 |
+| Bucket4j          | Rate limiting por IP (100 req/min)          |
+| Spring Actuator   | Health check e métricas                     |
+| AWS SES           | E-mails transacionais (HTML)                |
+| AWS S3            | Armazenamento de arquivos (avatares, capas) |
+| Thymeleaf         | Templates de e-mail HTML                    |
+| Google OAuth 2.0  | Login social                                |
+| Springdoc OpenAPI | Documentação Swagger UI                     |
+| Docker Compose    | Containerização da infraestrutura           |
+| GitHub Actions    | CI/CD — deploy automático                   |
+| Nginx + Certbot   | Reverse proxy + HTTPS (Let's Encrypt)       |
+| Lombok            | Redução de boilerplate                      |
 
 ---
 
@@ -101,22 +101,22 @@ src/main/java/com/example/taskmanagerapi/
 
 ### Infraestrutura
 
-| Serviço    | Tecnologia               | Descrição                       |
-| ---------- | ------------------------ | ------------------------------- |
-| Servidor   | AWS EC2 (t2.micro)       | Hospeda API + Redis via Docker  |
-| Banco      | AWS RDS PostgreSQL 16    | Banco de dados gerenciado       |
-| Cache      | Redis 7 (Docker local)   | Refresh tokens (dentro da EC2)  |
-| Email      | AWS SES (sa-east-1)      | E-mails transacionais           |
-| Storage    | AWS S3 (sa-east-1)       | Armazenamento de arquivos       |
-| SSL        | Nginx + Certbot          | HTTPS com Let's Encrypt         |
-| CI/CD      | GitHub Actions           | Deploy automático a cada push   |
+| Serviço  | Tecnologia             | Descrição                      |
+| -------- | ---------------------- | ------------------------------ |
+| Servidor | AWS EC2 (t2.micro)     | Hospeda API + Redis via Docker |
+| Banco    | AWS RDS PostgreSQL 16  | Banco de dados gerenciado      |
+| Cache    | Redis 7 (Docker local) | Refresh tokens (dentro da EC2) |
+| Email    | AWS SES (sa-east-1)    | E-mails transacionais          |
+| Storage  | AWS S3 (sa-east-1)     | Armazenamento de arquivos      |
+| SSL      | Nginx + Certbot        | HTTPS com Let's Encrypt        |
+| CI/CD    | GitHub Actions         | Deploy automático a cada push  |
 
 ### Spring Profiles
 
-| Profile   | Arquivo                         | Uso                                |
-| --------- | ------------------------------- | ---------------------------------- |
-| (default) | `application.properties`        | Desenvolvimento local              |
-| `prod`    | `application-prod.properties`   | Produção (credenciais via env vars)|
+| Profile   | Arquivo                       | Uso                                 |
+| --------- | ----------------------------- | ----------------------------------- |
+| (default) | `application.properties`      | Desenvolvimento local               |
+| `prod`    | `application-prod.properties` | Produção (credenciais via env vars) |
 
 Em produção, o profile é ativado via `SPRING_PROFILES_ACTIVE=prod` no Docker Compose.
 
@@ -131,29 +131,29 @@ A cada push na branch `master`, o workflow `.github/workflows/deploy.yml` execut
 
 Secrets necessários no GitHub (Settings → Secrets → Actions):
 
-| Secret         | Descrição                      |
-| -------------- | ------------------------------ |
-| `EC2_HOST`     | IP público da instância EC2    |
-| `EC2_USERNAME` | Usuário SSH (ex: `ec2-user`)   |
-| `EC2_SSH_KEY`  | Conteúdo do arquivo `.pem`     |
+| Secret         | Descrição                    |
+| -------------- | ---------------------------- |
+| `EC2_HOST`     | IP público da instância EC2  |
+| `EC2_USERNAME` | Usuário SSH (ex: `ec2-user`) |
+| `EC2_SSH_KEY`  | Conteúdo do arquivo `.pem`   |
 
 ### Variáveis de Ambiente (Produção)
 
 Configuradas em um arquivo `.env` na EC2 (não versionado):
 
-| Variável            | Descrição                           |
-| ------------------- | ----------------------------------- |
-| `DATABASE_URL`      | JDBC URL do RDS PostgreSQL          |
-| `DATABASE_USERNAME` | Usuário do banco                    |
-| `DATABASE_PASSWORD` | Senha do banco                      |
-| `JWT_SECRET`        | Chave para assinar JWTs (base64)    |
-| `AWS_ACCESS_KEY`    | Chave de acesso AWS                 |
-| `AWS_SECRET_KEY`    | Chave secreta AWS                   |
-| `AWS_REGION`        | Região AWS (sa-east-1)              |
-| `S3_BUCKET_NAME`    | Nome do bucket S3                   |
-| `AWS_SES_FROM`      | E-mail remetente verificado no SES  |
-| `GOOGLE_CLIENT_ID`  | Client ID do Google OAuth 2.0       |
-| `FRONTEND_URL`      | URL do frontend (CORS)              |
+| Variável            | Descrição                          |
+| ------------------- | ---------------------------------- |
+| `DATABASE_URL`      | JDBC URL do RDS PostgreSQL         |
+| `DATABASE_USERNAME` | Usuário do banco                   |
+| `DATABASE_PASSWORD` | Senha do banco                     |
+| `JWT_SECRET`        | Chave para assinar JWTs (base64)   |
+| `AWS_ACCESS_KEY`    | Chave de acesso AWS                |
+| `AWS_SECRET_KEY`    | Chave secreta AWS                  |
+| `AWS_REGION`        | Região AWS (sa-east-1)             |
+| `S3_BUCKET_NAME`    | Nome do bucket S3                  |
+| `AWS_SES_FROM`      | E-mail remetente verificado no SES |
+| `GOOGLE_CLIENT_ID`  | Client ID do Google OAuth 2.0      |
+| `FRONTEND_URL`      | URL do frontend (CORS)             |
 
 ### Segurança em Produção
 
