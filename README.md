@@ -17,7 +17,7 @@ Certifique-se de ter os seguintes itens instalados:
 ### 1. Clonar o repositório
 
 ```bash
-git clone https://github.com/reazew/task-manager-api.git
+git clone https://github.com/jonasmessias/task-manager-api.git
 cd task-manager-api
 ```
 
