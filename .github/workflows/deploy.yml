@@ -8,6 +8,7 @@ jobs:
   deploy:
     name: Deploy to Production
     runs-on: ubuntu-latest
+    environment: deploy
 
     steps:
       - name: Deploy via SSH
