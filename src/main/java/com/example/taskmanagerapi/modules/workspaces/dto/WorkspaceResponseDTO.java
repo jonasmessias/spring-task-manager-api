@@ -11,7 +11,9 @@ public record WorkspaceResponseDTO(
     String id,
     String name,
     String coverUrl,
+    String ownerId,
     Integer boardCount,
+    Integer memberCount,
     LocalDateTime createdAt,
     LocalDateTime updatedAt
 ) {
@@ -20,7 +22,9 @@ public record WorkspaceResponseDTO(
             workspace.getId(),
             workspace.getName(),
             workspace.getCoverUrl(),
+            workspace.getOwner().getId(),
             workspace.getBoards() != null ? workspace.getBoards().size() : 0,
+            workspace.getMembers() != null ? workspace.getMembers().size() : 0,
             workspace.getCreatedAt(),
             workspace.getUpdatedAt()
         );

@@ -14,7 +14,9 @@ public record WorkspaceDetailDTO(
     String id,
     String name,
     String coverUrl,
+    String ownerId,
     List<BoardResponseDTO> boards,
+    Integer memberCount,
     LocalDateTime createdAt,
     LocalDateTime updatedAt
 ) {
@@ -23,11 +25,13 @@ public record WorkspaceDetailDTO(
             workspace.getId(),
             workspace.getName(),
             workspace.getCoverUrl(),
+            workspace.getOwner().getId(),
             workspace.getBoards() != null 
                 ? workspace.getBoards().stream()
                     .map(BoardResponseDTO::new)
                     .collect(Collectors.toList())
                 : List.of(),
+            workspace.getMembers() != null ? workspace.getMembers().size() : 0,
             workspace.getCreatedAt(),
             workspace.getUpdatedAt()
         );
