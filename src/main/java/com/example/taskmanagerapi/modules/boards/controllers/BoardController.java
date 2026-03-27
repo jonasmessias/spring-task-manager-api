@@ -29,7 +29,6 @@ import com.example.taskmanagerapi.modules.boards.dto.BoardResponseDTO;
 import com.example.taskmanagerapi.modules.boards.dto.CreateBoardDTO;
 import com.example.taskmanagerapi.modules.boards.dto.UpdateBoardDTO;
 import com.example.taskmanagerapi.modules.boards.services.BoardService;
-import com.example.taskmanagerapi.modules.storage.dto.UploadResponseDTO;
 import com.example.taskmanagerapi.modules.storage.services.StorageService;
 import com.example.taskmanagerapi.modules.workspaces.domain.Workspace;
 import com.example.taskmanagerapi.modules.workspaces.services.WorkspaceService;
@@ -171,14 +170,14 @@ public class BoardController {
     @Operation(summary = "Upload Board Cover", description = "Upload or replace the board cover image. Only the board owner can upload. Accepts JPG, PNG and WebP up to 5MB.")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Cover uploaded successfully",
-                content = @Content(schema = @Schema(implementation = UploadResponseDTO.class))),
+                content = @Content(schema = @Schema(implementation = BoardResponseDTO.class))),
         @ApiResponse(responseCode = "404", description = "Board not found"),
         @ApiResponse(responseCode = "403", description = "Not the board owner"),
         @ApiResponse(responseCode = "400", description = "Invalid file"),
         @ApiResponse(responseCode = "401", description = "Unauthorized")
     })
     @PutMapping(value = "/{id}/cover", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<UploadResponseDTO> uploadBoardCover(
+    public ResponseEntity<BoardResponseDTO> uploadBoardCover(
             @Parameter(description = "Board ID", required = true) @PathVariable @NonNull String id,
             @RequestParam("file") MultipartFile file,
             @AuthenticationPrincipal User user) {
@@ -191,9 +190,9 @@ public class BoardController {
 
         String fileUrl = storageService.uploadFile(file, BOARD_COVER_FOLDER);
         board.setCoverUrl(fileUrl);
-        boardService.saveBoard(board);
+        Board saved = boardService.saveBoard(board);
 
-        return ResponseEntity.ok(new UploadResponseDTO(fileUrl));
+        return ResponseEntity.ok(new BoardResponseDTO(saved));
     }
 
     @Operation(summary = "Delete Board Cover", description = "Remove the board cover image. Only the board owner can delete.")

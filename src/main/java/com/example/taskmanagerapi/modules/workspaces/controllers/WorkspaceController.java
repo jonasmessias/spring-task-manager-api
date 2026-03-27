@@ -19,7 +19,6 @@ import org.springframework.web.multipart.MultipartFile;
 
 import com.example.taskmanagerapi.modules.auth.domain.User;
 import com.example.taskmanagerapi.modules.auth.dto.ErrorResponseDTO;
-import com.example.taskmanagerapi.modules.storage.dto.UploadResponseDTO;
 import com.example.taskmanagerapi.modules.storage.services.StorageService;
 import com.example.taskmanagerapi.modules.workspaces.domain.Workspace;
 import com.example.taskmanagerapi.modules.workspaces.dto.CreateWorkspaceDTO;
@@ -140,14 +139,14 @@ public class WorkspaceController {
     @Operation(summary = "Upload Workspace Cover", description = "Upload or replace the workspace cover image. Only the owner can upload. Accepts JPG, PNG and WebP up to 5MB.")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Cover uploaded successfully",
-                content = @Content(schema = @Schema(implementation = UploadResponseDTO.class))),
+                content = @Content(schema = @Schema(implementation = WorkspaceResponseDTO.class))),
         @ApiResponse(responseCode = "404", description = "Workspace not found"),
         @ApiResponse(responseCode = "403", description = "Not the workspace owner"),
         @ApiResponse(responseCode = "400", description = "Invalid file"),
         @ApiResponse(responseCode = "401", description = "Unauthorized")
     })
     @PutMapping(value = "/{id}/cover", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<UploadResponseDTO> uploadWorkspaceCover(
+    public ResponseEntity<WorkspaceResponseDTO> uploadWorkspaceCover(
             @Parameter(description = "Workspace ID", required = true) @PathVariable String id,
             @RequestParam("file") MultipartFile file,
             @AuthenticationPrincipal User user) {
@@ -160,9 +159,9 @@ public class WorkspaceController {
 
         String fileUrl = storageService.uploadFile(file, WORKSPACE_COVER_FOLDER);
         workspace.setCoverUrl(fileUrl);
-        workspaceService.saveWorkspace(workspace);
+        Workspace saved = workspaceService.saveWorkspace(workspace);
 
-        return ResponseEntity.ok(new UploadResponseDTO(fileUrl));
+        return ResponseEntity.ok(new WorkspaceResponseDTO(saved));
     }
 
     @Operation(summary = "Delete Workspace Cover", description = "Remove the workspace cover image. Only the owner can delete.")

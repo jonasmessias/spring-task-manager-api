@@ -18,7 +18,6 @@ import com.example.taskmanagerapi.modules.auth.domain.User;
 import com.example.taskmanagerapi.modules.auth.dto.UpdateProfileDTO;
 import com.example.taskmanagerapi.modules.auth.dto.UserProfileDTO;
 import com.example.taskmanagerapi.modules.auth.services.UserService;
-import com.example.taskmanagerapi.modules.storage.dto.UploadResponseDTO;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -80,16 +79,15 @@ public class UserController {
     @Operation(summary = "Upload Avatar", description = "Upload or replace the current user's avatar. Accepts JPG, PNG and WebP images up to 5MB.")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Avatar uploaded successfully",
-                content = @Content(schema = @Schema(implementation = UploadResponseDTO.class))),
+                content = @Content(schema = @Schema(implementation = UserProfileDTO.class))),
         @ApiResponse(responseCode = "400", description = "Invalid file (wrong type or too large)"),
         @ApiResponse(responseCode = "401", description = "Unauthorized")
     })
     @PutMapping(value = "/me/avatar", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<UploadResponseDTO> uploadAvatar(
+    public ResponseEntity<UserProfileDTO> uploadAvatar(
             @AuthenticationPrincipal User user,
             @RequestParam("file") MultipartFile file) {
-        String fileUrl = userService.uploadAvatar(user, file);
-        return ResponseEntity.ok(new UploadResponseDTO(fileUrl));
+        return ResponseEntity.ok(userService.uploadAvatar(user, file));
     }
 
     @Operation(summary = "Delete Avatar", description = "Remove the current user's avatar.")

@@ -29,7 +29,7 @@ public record BoardDetailDTO(
             board.getOwner().getId(),
             board.getOwner().getName(),
             board.getLists() != null ? 
-                board.getLists().stream().map(ListResponseDTO::new).toList() : 
+                board.getLists().stream().map(ListResponseDTO::withCards).toList() : 
                 List.of(),
             board.getCreatedAt(),
             board.getUpdatedAt()

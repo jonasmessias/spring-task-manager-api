@@ -59,7 +59,7 @@ public class UserService {
     }
 
     @Transactional
-    public String uploadAvatar(User jwtUser, org.springframework.web.multipart.MultipartFile file) {
+    public UserProfileDTO uploadAvatar(User jwtUser, org.springframework.web.multipart.MultipartFile file) {
         User user = getFullUser(jwtUser);
         if (user.getAvatarUrl() != null) {
             storageService.deleteFile(user.getAvatarUrl());
@@ -67,8 +67,8 @@ public class UserService {
 
         String fileUrl = storageService.uploadFile(file, "avatars");
         user.setAvatarUrl(fileUrl);
-        userRepository.save(user);
-        return fileUrl;
+        User saved = userRepository.save(user);
+        return toDTO(saved);
     }
 
     @Transactional
