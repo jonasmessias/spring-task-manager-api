@@ -14,9 +14,7 @@ public class CorsConfig implements WebMvcConfigurer {
     @Value("${app.frontend.prod-url}")
     private String frontendProdUrl;
 
-    @Value("http://localhost:4200")	
-    private String frontendLocalUrl;
-
+    private String frontendLocalUrl = "http://localhost:4200";
 
     @Override
     public void addCorsMappings(@org.springframework.lang.NonNull CorsRegistry registry) {
