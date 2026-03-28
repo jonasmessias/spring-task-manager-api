@@ -4,11 +4,13 @@ LABEL authors="JONAS"
 
 WORKDIR /app
 
+# 1) Copy only pom.xml and resolve dependencies (cached layer)
 COPY pom.xml .
-RUN mvn dependency:go-offline -B
+RUN mvn dependency:resolve dependency:resolve-plugins -B -q
 
+# 2) Copy source and package
 COPY src ./src
-RUN mvn clean package -DskipTests
+RUN mvn clean package -DskipTests -B -q
 
 # ── Stage 2: Run ────────────────────────────────────────────────────
 FROM eclipse-temurin:17-jre-jammy
