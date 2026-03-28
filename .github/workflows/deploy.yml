@@ -52,6 +52,7 @@ jobs:
           script: |
             cd ~/spring-task-manager-api
             git pull origin master
+            docker image prune -f
             docker compose -f docker-compose.prod.yml pull app
             docker compose -f docker-compose.prod.yml up -d
             docker image prune -f

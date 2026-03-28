@@ -28,8 +28,10 @@ USER appuser
 EXPOSE 8080
 
 # JVM tuning for containers (respects container memory limits)
-ENTRYPOINT ["java", \
-  "-XX:+UseContainerSupport", \
-  "-XX:MaxRAMPercentage=75.0", \
-  "-Djava.security.egd=file:/dev/./urandom", \
-  "-jar", "app.jar"]
+# JAVA_OPTS can be set via environment variable for custom tuning
+ENTRYPOINT ["sh", "-c", "java \
+  -XX:+UseContainerSupport \
+  -XX:MaxRAMPercentage=75.0 \
+  -Djava.security.egd=file:/dev/./urandom \
+  ${JAVA_OPTS} \
+  -jar app.jar"]
